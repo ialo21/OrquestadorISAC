@@ -1,0 +1,64 @@
+Traceback (most recent call last):
+  File "c:\apps\RobotExtraccionMongo\main.py", line 98, in main
+    atlas.descargar_log(page, resultados_dir, tipo_log="audit", start=start, end=end)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 287, in descargar_log
+    _set_date_input(page, "input[name='startDate']", start_str)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 234, in _set_date_input
+    inp.triple_click()
+    ^^^^^^^^^^^^^^^^
+AttributeError: 'Locator' object has no attribute 'triple_click'
+============================================================
+  Robot Extracción Logs - MongoDB Atlas
+  Inicio: 19/02/2026 22:29:56
+============================================================
+  logs/      → C:\apps\OrquestadorBots\backend\ejecuciones\robot-extraccion-mongo\2026-02-19_22-29-55\logs
+  resultados → C:\apps\OrquestadorBots\backend\ejecuciones\robot-extraccion-mongo\2026-02-19_22-29-55\resultados
+
+Rango de extracción: 2026-02-16 → 2026-02-18
+[1/N] Accediendo a MongoDB Atlas...
+  → Ingresando email...
+  → Ingresando contraseña...
+  → Haciendo clic en Login...
+  → Verificando si aparece pantalla de MFA...
+  → Pantalla MFA detectada. Enviando código...
+  → Esperando OTP en correo (hasta 60s)...
+  → OTP obtenido: 751820
+  → Rellenando OTP: 751820
+  → OTP ingresado, esperando redirección...
+  [evidencia] 20260219_223011_01b_mfa_completado.png
+  → Validando login exitoso...
+  [evidencia] 20260219_223017_01_login_exitoso.png
+  ✓ Login completado
+[2/N] Cambiando a organización Interseguro...
+  [evidencia] 20260219_223018_02a_org_interseguro.png
+  ✓ Organización Interseguro seleccionada
+  → Entrando al proyecto PortalSistemas...
+  [evidencia] 20260219_223020_02b_proyecto_portalsistemas.png
+  ✓ Proyecto PortalSistemas abierto
+  → Navegando a Clusters...
+  [evidencia] 20260219_223020_02c_clusters.png
+  ✓ Sección Clusters abierta
+  → Localizando cluster vis-data-prd...
+  [evidencia] 20260219_223021_02d_menu_cluster.png
+  ✓ Menú del cluster abierto
+  → Haciendo clic en Download Logs...
+  [evidencia] 20260219_223021_02e_download_logs.png
+  ✓ Sección Download Logs abierta
+[4/N] Descargando audit log (2026-02-16 → 2026-02-18)...
+  → Seleccionando proceso: mongodb-audit-log...
+  → Seleccionando Custom Time...
+  → Ingresando fecha inicio: 02/16/2026 12:00am...
+
+[ERROR] Se produjo un error inesperado:
+"c:\apps\RobotExtraccionMongo\main.py", line 98, in main
+    atlas.descargar_log(page, resultados_dir, tipo_log="audit", start=start, end=end)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 287, in descargar_log
+    _set_date_input(page, "input[name='startDate']", start_str)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 234, in _set_date_input
+    inp.triple_click()
+    ^^^^^^^^^^^^^^^^
+AttributeError: 'Locator' object has no attribute 'triple_click'

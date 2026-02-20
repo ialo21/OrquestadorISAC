@@ -1,0 +1,146 @@
+Traceback (most recent call last):
+  File "c:\apps\RobotExtraccionMongo\main.py", line 89, in main
+    page = atlas.login(page, resultados_dir, logs_dir)
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 159, in login
+    exito = _hacer_login(page, evidencias_dir, logs_dir)
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 48, in _hacer_login
+    login_btn.click()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\sync_api\_generated.py", line 15464, in click
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.click(
+        ^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+        )
+        ^
+    )
+    ^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_sync_base.py", line 115, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_locator.py", line 156, in click
+    return await self._frame.click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_frame.py", line 488, in click
+    await self._channel.send("click", locals_to_params(locals()))
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_connection.py", line 61, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_connection.py", line 528, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TargetClosedError: Locator.click: Target page, context or browser has been closed
+Call log:
+  - waiting for locator("button:has-text('Login')")
+  -     - locator resolved to <button name="login" type="submit" aria-disabled="true" aria-pressed="false" data-lgid="lg-button" data-testid="button-with-loader" class="lg-ui-button-0000 leafygreen-ui-ozl6m css-polse2">…</button>
+  -   - attempting click action
+  -     2 × waiting for element to be visible, enabled and stable
+  -       - element is not enabled
+  -     - retrying click action
+  -     - waiting 20ms
+  -     2 × waiting for element to be visible, enabled and stable
+  -       - element is not enabled
+  -     - retrying click action
+  -       - waiting 100ms
+  -     6 × waiting for element to be visible, enabled and stable
+  -       - element is not enabled
+  -     - retrying click action
+  -       - waiting 500ms
+  -     - waiting for" https://account.mongodb.com/account/security/mfa?uId=00uzz468qvGVyNJD5297&stateToken=004h5_dPOfnENLGjmnYTSqz9C_8jsCi2ZpWuNckhNt" navigation to finish...
+  -     - navigated to "https://account.mongodb.com/account/security/mfa?uId=00uzz468qvGVyNJD5297&stateToken=004h5_dPOfnENLGjmnYTSqz9C_8jsCi2ZpWuNckhNt"
+  -     - waiting for element to be visible, enabled and stable
+  -   - element was detached from the DOM, retrying
+
+============================================================
+  Robot Extracción Logs - MongoDB Atlas
+  Inicio: 19/02/2026 22:50:21
+============================================================
+  logs/      → C:\apps\OrquestadorBots\backend\ejecuciones\robot-extraccion-mongo\2026-02-19_22-50-20\logs
+  resultados → C:\apps\OrquestadorBots\backend\ejecuciones\robot-extraccion-mongo\2026-02-19_22-50-20\resultados
+
+Rango de extracción: 2026-02-16 → 2026-02-18
+[1/N] Accediendo a MongoDB Atlas...
+  → Ingresando email...
+  → Ingresando contraseña...
+  → Haciendo clic en Login (spam muy rápido hasta pasar error de servidor)...
+  → Login sigue visible, reintentando (1/28)...
+  → Login sigue visible, reintentando (2/28)...
+  → Login sigue visible, reintentando (3/28)...
+  → Login sigue visible, reintentando (4/28)...
+  → Login sigue visible, reintentando (5/28)...
+  → Login sigue visible, reintentando (6/28)...
+  → Login sigue visible, reintentando (7/28)...
+  → Login sigue visible, reintentando (8/28)...
+  → Login sigue visible, reintentando (9/28)...
+  → Login sigue visible, reintentando (10/28)...
+  → Login sigue visible, reintentando (11/28)...
+  → Login sigue visible, reintentando (12/28)...
+  → Login sigue visible, reintentando (13/28)...
+  → Login sigue visible, reintentando (14/28)...
+  → Login sigue visible, reintentando (15/28)...
+  → Login sigue visible, reintentando (16/28)...
+  → Login sigue visible, reintentando (17/28)...
+  → Login sigue visible, reintentando (18/28)...
+  → Login sigue visible, reintentando (19/28)...
+  → Login sigue visible, reintentando (20/28)...
+
+[ERROR] Se produjo un error inesperado:
+
+  File "c:\apps\RobotExtraccionMongo\main.py", line 89, in main
+    page = atlas.login(page, resultados_dir, logs_dir)
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 159, in login
+    exito = _hacer_login(page, evidencias_dir, logs_dir)
+  File "c:\apps\RobotExtraccionMongo\src\mongo_atlas.py", line 48, in _hacer_login
+    login_btn.click()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\sync_api\_generated.py", line 15464, in click
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.click(
+        ^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+        )
+        ^
+    )
+    ^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_sync_base.py", line 115, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_locator.py", line 156, in click
+    return await self._frame.click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_frame.py", line 488, in click
+    await self._channel.send("click", locals_to_params(locals()))
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_connection.py", line 61, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\iagol\AppData\Roaming\Python\Python314\site-packages\playwright\_impl\_connection.py", line 528, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TargetClosedError: Locator.click: Target page, context or browser has been closed
+Call log:
+  - waiting for locator("button:has-text('Login')")
+  -     - locator resolved to <button name="login" type="submit" aria-disabled="true" aria-pressed="false" data-lgid="lg-button" data-testid="button-with-loader" class="lg-ui-button-0000 leafygreen-ui-ozl6m css-polse2">…</button>
+  -   - attempting click action
+  -     2 × waiting for element to be visible, enabled and stable
+  -       - element is not enabled
+  -     - retrying click action
+  -     - waiting 20ms
+  -     2 × waiting for element to be visible, enabled and stable
+  -       - element is not enabled
+  -     - retrying click action
+  -       - waiting 100ms
+  -     6 × waiting for element to be visible, enabled and stable
+  -       - element is not enabled
+  -     - retrying click action
+  -       - waiting 500ms
+  -     - waiting for" https://account.mongodb.com/account/security/mfa?uId=00uzz468qvGVyNJD5297&stateToken=004h5_dPOfnENLGjmnYTSqz9C_8jsCi2ZpWuNckhNt" navigation to finish...
+  -     - navigated to "https://account.mongodb.com/account/security/mfa?uId=00uzz468qvGVyNJD5297&stateToken=004h5_dPOfnENLGjmnYTSqz9C_8jsCi2ZpWuNckhNt"
+  -     - waiting for element to be visible, enabled and stable
+  -   - element was detached from the DOM, retrying
+
