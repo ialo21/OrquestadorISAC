@@ -11,5 +11,7 @@ export default defineConfig({
   },
   server: {
     port: 5175,
+    host: true,
+    allowedHosts: ['.nip.io'],
   },
 })
