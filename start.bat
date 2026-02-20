@@ -27,7 +27,7 @@ echo.
 echo ============================================
 echo  Aplicacion iniciada:
 echo    Backend:  http://localhost:8002
-echo    Frontend: http://localhost:5175 (o http://<tu-ip>.nip.io:5175)
+echo    Frontend: http://localhost:5175 (o http://TU-IP.nip.io:5175)
 echo    API docs: http://localhost:8002/docs
 echo ============================================
 echo.
