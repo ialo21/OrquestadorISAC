@@ -18,16 +18,16 @@ start "OrquestadorBots-Backend" cmd /c "python main.py"
 :: Esperar a que el backend inicie
 timeout /t 3 /nobreak > nul
 
-:: Iniciar frontend
-echo [2/2] Iniciando frontend (Vite - puerto 5175)...
+:: Iniciar frontend (expuesto en todas las interfaces)
+echo [2/2] Iniciando frontend (Vite - puerto 5175, host 0.0.0.0)...
 cd /d "%~dp0frontend"
-start "OrquestadorBots-Frontend" cmd /c "npm run dev"
+start "OrquestadorBots-Frontend" cmd /c "npm run dev -- --host 0.0.0.0 --port 5175"
 
 echo.
 echo ============================================
 echo  Aplicacion iniciada:
 echo    Backend:  http://localhost:8002
-echo    Frontend: http://localhost:5175
+echo    Frontend: http://localhost:5175 (o http://<tu-ip>.nip.io:5175)
 echo    API docs: http://localhost:8002/docs
 echo ============================================
 echo.
