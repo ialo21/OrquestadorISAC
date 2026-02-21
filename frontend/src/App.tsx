@@ -9,6 +9,7 @@ import LoginPage from '@/pages/LoginPage'
 import AuthCallbackPage from '@/pages/AuthCallbackPage'
 import LandingPage from '@/pages/LandingPage'
 import EjecucionesPage from '@/pages/EjecucionesPage'
+import HistorialPage from '@/pages/HistorialPage'
 import RobotExtraccionMongoPage from '@/pages/bots/RobotExtraccionMongoPage'
 import RPAMoniObjetosPage from '@/pages/bots/RPAMoniObjetosPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
@@ -35,6 +36,10 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
             <Route path="/ejecuciones" element={<ProtectedRoute><EjecucionesPage /></ProtectedRoute>} />
+            <Route
+              path="/historial"
+              element={<ProtectedRoute requiredRole="admin"><HistorialPage /></ProtectedRoute>}
+            />
             <Route
               path="/bots/robot-extraccion-mongo"
               element={<ProtectedRoute requiredBotId="robot-extraccion-mongo"><RobotExtraccionMongoPage /></ProtectedRoute>}

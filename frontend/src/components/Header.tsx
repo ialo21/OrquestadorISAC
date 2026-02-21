@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  Bot, LayoutDashboard, Activity, Database, Monitor,
+  Bot, LayoutDashboard, Activity, History, Database, Monitor,
   Users, Settings, LogOut, Menu, X, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
@@ -79,6 +79,9 @@ export default function Header() {
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
           {navItem('/', <LayoutDashboard className="w-4 h-4 flex-shrink-0" />, 'Inicio')}
           {navItem('/ejecuciones', <Activity className="w-4 h-4 flex-shrink-0" />, 'Ejecuciones')}
+          {user && (user.role === 'superadmin' || user.role === 'admin') &&
+            navItem('/historial', <History className="w-4 h-4 flex-shrink-0" />, 'Historial')
+          }
 
           {/* Bots section */}
           {bots.length > 0 && (

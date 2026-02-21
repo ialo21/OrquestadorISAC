@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Play, Loader2, Bot, AlertCircle, RefreshCw } from 'lucide-react'
+import { Play, Loader2, Bot, AlertCircle, RefreshCw, Timer } from 'lucide-react'
 import { fetchBot, executeBot, fetchBotExecutions, streamExecution } from '@/services/api'
 import type { Bot as BotType, BotExecution } from '@/types'
 import ExecutionTable from '@/components/ExecutionTable'
-import { cn } from '@/lib/utils'
+import { cn, formatElapsed } from '@/lib/utils'
+import { useLiveTimer } from '@/hooks/useLiveTimer'
 
 interface Props {
   botId: string
@@ -64,6 +65,12 @@ export default function BotPage({ botId, children }: Props) {
 
   useEffect(() => () => { esRef.current?.close() }, [])
 
+  const activeExecution = executions.find(
+    (e) => e.status === 'running' || e.status === 'queued',
+  )
+  const isActive = !!activeExecution
+  const elapsed = useLiveTimer(activeExecution?.queued_at, isActive)
+
   if (!bot) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -74,6 +81,28 @@ export default function BotPage({ botId, children }: Props) {
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {/* Banner de ejecución activa con timer en vivo */}
+      {activeExecution && elapsed !== null && (
+        <div className={cn(
+          'flex items-center gap-3 rounded-xl px-5 py-3 border text-sm font-medium',
+          activeExecution.status === 'running'
+            ? 'bg-warning-50 border-warning-200 text-warning-800'
+            : 'bg-gray-50 border-gray-200 text-gray-600',
+        )}>
+          <Timer className="w-4 h-4 flex-shrink-0" />
+          <span>
+            {activeExecution.status === 'running' ? 'En ejecución' : 'En cola'}
+            {' · '}tiempo desde solicitud:
+          </span>
+          <span className="font-mono text-lg tabular-nums">
+            {formatElapsed(elapsed)}
+          </span>
+          {activeExecution.status === 'queued' && (
+            <span className="text-xs text-gray-400 ml-auto">esperando turno…</span>
+          )}
+        </div>
+      )}
+
       {/* Cabecera del bot */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">

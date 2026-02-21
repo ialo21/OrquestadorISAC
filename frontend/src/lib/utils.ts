@@ -25,6 +25,16 @@ export function formatDuration(seconds: number): string {
   return `${m}m ${s}s`
 }
 
+/** Formatea segundos enteros como contador en vivo: 0:05, 1:23, 1:02:45 */
+export function formatElapsed(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  const mm = String(m).padStart(2, '0')
+  const ss = String(s).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
   const k = 1024

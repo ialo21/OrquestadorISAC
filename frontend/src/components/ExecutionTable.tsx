@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye } from 'lucide-react'
+import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer } from 'lucide-react'
 import type { BotExecution, ExecutionFile, ExecutionFiles } from '@/types'
-import { cn, formatDate, formatDuration, formatBytes } from '@/lib/utils'
+import { cn, formatDate, formatDuration, formatBytes, formatElapsed } from '@/lib/utils'
 import { fetchExecutionFiles, downloadZipUrl, cancelExecution } from '@/services/api'
 import LogViewerModal from '@/components/LogViewerModal'
+import { useLiveTimer } from '@/hooks/useLiveTimer'
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
   queued:      { label: 'En cola',    classes: 'bg-gray-100 text-gray-600' },
@@ -127,6 +128,90 @@ function FilesRow({ execution }: { execution: BotExecution }) {
   )
 }
 
+/** Contador en vivo para ejecuciones activas (running o queued). */
+function LiveDuration({ execution }: { execution: BotExecution }) {
+  const isActive = execution.status === 'running' || execution.status === 'queued'
+  const elapsed = useLiveTimer(execution.queued_at, isActive)
+
+  if (!isActive) return <span className="text-gray-500">{formatDuration(execution.duration_seconds)}</span>
+  if (elapsed === null) return <span className="text-gray-400">—</span>
+
+  return (
+    <span className="inline-flex items-center gap-1 font-mono text-warning-700 font-medium tabular-nums">
+      <Timer className="w-3 h-3 flex-shrink-0" />
+      {formatElapsed(elapsed)}
+    </span>
+  )
+}
+
+interface RowProps {
+  ex: BotExecution
+  showBotName: boolean
+  expanded: boolean
+  onToggle: () => void
+  onCancel: (id: string) => void
+  cancelling: string | null
+}
+
+function ExecutionRow({ ex, showBotName, expanded, onToggle, onCancel, cancelling }: RowProps) {
+  const status = STATUS_CONFIG[ex.status] ?? STATUS_CONFIG.queued
+  const colSpan = showBotName ? 8 : 7
+
+  return (
+    <>
+      <tr className="hover:bg-gray-50 transition-colors">
+        <td className="py-3 pr-2">
+          <button onClick={onToggle} className="text-gray-400 hover:text-gray-600">
+            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+        </td>
+        {showBotName && <td className="py-3 pr-4 font-medium text-gray-700">{ex.bot_name}</td>}
+        <td className="py-3 pr-4">
+          <span className={cn('text-xs px-2 py-1 rounded-full font-medium', status.classes)}>
+            {status.label}
+          </span>
+        </td>
+        <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">{formatDate(ex.queued_at)}</td>
+        <td className="py-3 pr-4">
+          <LiveDuration execution={ex} />
+        </td>
+        <td className="py-3 pr-4 text-gray-500 truncate max-w-[160px]">{ex.triggered_by_name || ex.triggered_by}</td>
+        <td className="py-3 pr-4">
+          {ex.run_folder ? <FilesRow execution={ex} /> : <span className="text-gray-300 text-xs">—</span>}
+        </td>
+        <td className="py-3">
+          {(ex.status === 'queued' || ex.status === 'running') && (
+            <button
+              onClick={() => onCancel(ex.id)}
+              disabled={cancelling === ex.id}
+              className="text-danger-500 hover:text-danger-700 disabled:opacity-40"
+              title="Cancelar"
+            >
+              {cancelling === ex.id
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <XCircle className="w-4 h-4" />}
+            </button>
+          )}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="bg-gray-50">
+          <td colSpan={colSpan} className="px-6 py-3">
+            <div className="text-xs text-gray-500 space-y-1">
+              <p><span className="font-medium text-gray-600">ID:</span> {ex.id}</p>
+              <p><span className="font-medium text-gray-600">Solicitado:</span> {formatDate(ex.queued_at)}</p>
+              {ex.started_at && <p><span className="font-medium text-gray-600">Inicio real:</span> {formatDate(ex.started_at)}</p>}
+              {ex.completed_at && <p><span className="font-medium text-gray-600">Fin:</span> {formatDate(ex.completed_at)}</p>}
+              {ex.run_folder && <p><span className="font-medium text-gray-600">Carpeta:</span> {ex.run_folder}</p>}
+              {ex.error_message && <p className="text-danger-600"><span className="font-medium">Error:</span> {ex.error_message}</p>}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
 export default function ExecutionTable({ executions, showBotName = false, onCancelSuccess }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
@@ -158,71 +243,25 @@ export default function ExecutionTable({ executions, showBotName = false, onCanc
             <th className="text-left pb-3 pr-4 w-5" />
             {showBotName && <th className="text-left pb-3 pr-4">Bot</th>}
             <th className="text-left pb-3 pr-4">Estado</th>
-            <th className="text-left pb-3 pr-4">Inicio</th>
-            <th className="text-left pb-3 pr-4">Duración</th>
+            <th className="text-left pb-3 pr-4">Solicitado</th>
+            <th className="text-left pb-3 pr-4">Tiempo</th>
             <th className="text-left pb-3 pr-4">Disparado por</th>
             <th className="text-left pb-3 pr-4">Archivos</th>
             <th className="text-left pb-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {executions.map((ex) => {
-            const status = STATUS_CONFIG[ex.status] ?? STATUS_CONFIG.queued
-            const isExpanded = expanded === ex.id
-            return (
-              <>
-                <tr key={ex.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-3 pr-2">
-                    <button
-                      onClick={() => setExpanded(isExpanded ? null : ex.id)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                  </td>
-                  {showBotName && <td className="py-3 pr-4 font-medium text-gray-700">{ex.bot_name}</td>}
-                  <td className="py-3 pr-4">
-                    <span className={cn('text-xs px-2 py-1 rounded-full font-medium', status.classes)}>
-                      {status.label}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">{formatDate(ex.queued_at)}</td>
-                  <td className="py-3 pr-4 text-gray-500">{formatDuration(ex.duration_seconds)}</td>
-                  <td className="py-3 pr-4 text-gray-500 truncate max-w-[160px]">{ex.triggered_by_name || ex.triggered_by}</td>
-                  <td className="py-3 pr-4">
-                    {ex.run_folder ? <FilesRow execution={ex} /> : <span className="text-gray-300 text-xs">—</span>}
-                  </td>
-                  <td className="py-3">
-                    {(ex.status === 'queued' || ex.status === 'running') && (
-                      <button
-                        onClick={() => handleCancel(ex.id)}
-                        disabled={cancelling === ex.id}
-                        className="text-danger-500 hover:text-danger-700 disabled:opacity-40"
-                        title="Cancelar"
-                      >
-                        {cancelling === ex.id
-                          ? <Loader2 className="w-4 h-4 animate-spin" />
-                          : <XCircle className="w-4 h-4" />}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-                {isExpanded && (
-                  <tr key={`${ex.id}-detail`} className="bg-gray-50">
-                    <td colSpan={showBotName ? 8 : 7} className="px-6 py-3">
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <p><span className="font-medium text-gray-600">ID:</span> {ex.id}</p>
-                        {ex.started_at && <p><span className="font-medium text-gray-600">Inicio real:</span> {formatDate(ex.started_at)}</p>}
-                        {ex.completed_at && <p><span className="font-medium text-gray-600">Fin:</span> {formatDate(ex.completed_at)}</p>}
-                        {ex.run_folder && <p><span className="font-medium text-gray-600">Carpeta:</span> {ex.run_folder}</p>}
-                        {ex.error_message && <p className="text-danger-600"><span className="font-medium">Error:</span> {ex.error_message}</p>}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </>
-            )
-          })}
+          {executions.map((ex) => (
+            <ExecutionRow
+              key={ex.id}
+              ex={ex}
+              showBotName={showBotName}
+              expanded={expanded === ex.id}
+              onToggle={() => setExpanded(expanded === ex.id ? null : ex.id)}
+              onCancel={handleCancel}
+              cancelling={cancelling}
+            />
+          ))}
         </tbody>
       </table>
     </div>
