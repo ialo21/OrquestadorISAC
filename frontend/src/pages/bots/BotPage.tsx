@@ -94,7 +94,11 @@ export default function BotPage({ botId, children, getInputData }: Props) {
     (e) => e.status === 'running' || e.status === 'queued',
   )
   const isActive = !!activeExecution
-  const elapsed = useLiveTimer(activeExecution?.queued_at, isActive)
+  // Usar started_at cuando ya está corriendo (más preciso), queued_at mientras espera
+  const timerFrom = activeExecution?.status === 'running'
+    ? (activeExecution.started_at ?? activeExecution.queued_at)
+    : activeExecution?.queued_at
+  const elapsed = useLiveTimer(timerFrom, isActive)
 
   if (!bot) {
     return (
@@ -117,7 +121,8 @@ export default function BotPage({ botId, children, getInputData }: Props) {
           <Timer className="w-4 h-4 flex-shrink-0" />
           <span>
             {activeExecution.status === 'running' ? 'En ejecución' : 'En cola'}
-            {' · '}tiempo desde solicitud:
+            {' · '}
+            {activeExecution.status === 'running' ? 'tiempo de ejecución:' : 'tiempo en cola:'}
           </span>
           <span className="font-mono text-lg tabular-nums">
             {formatElapsed(elapsed)}
