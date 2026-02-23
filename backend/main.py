@@ -431,8 +431,18 @@ def download_execution_zip(execution_id: str, current_user: dict = Depends(auth.
             if f.is_file():
                 zf.write(f, f.relative_to(base))
     buf.seek(0)
-    zip_name = f"ejecucion_{execution_id[:8]}.zip"
-    return StreamingResponse(buf, media_type="application/zip", headers={"Content-Disposition": f"attachment; filename={zip_name}"})
+
+    bot_slug = ex.get("bot_id", "bot").replace(" ", "_")
+    input_data = ex.get("input_data") or {}
+    fecha_desde = input_data.get("fecha_desde") or input_data.get("FECHA_DESDE")
+    fecha_hasta = input_data.get("fecha_hasta") or input_data.get("FECHA_HASTA")
+    if fecha_desde and fecha_hasta:
+        zip_name = f"evidencia_{bot_slug}_{fecha_desde}_al_{fecha_hasta}.zip"
+    else:
+        fecha_str = (ex.get("queued_at") or "")[:10] or datetime.now().strftime("%Y-%m-%d")
+        zip_name = f"evidencia_{bot_slug}_{fecha_str}.zip"
+
+    return StreamingResponse(buf, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{zip_name}"'})
 
 
 # ══════════════════════════════════════════════════════════════════════════════

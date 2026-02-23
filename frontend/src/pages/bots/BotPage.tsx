@@ -23,12 +23,29 @@ export default function BotPage({ botId, children, getInputData }: Props) {
   const [successMsg, setSuccessMsg] = useState('')
   const esRef = useRef<EventSource | null>(null)
 
+  const openStream = useCallback((execId: string) => {
+    if (esRef.current) esRef.current.close()
+    esRef.current = streamExecution(execId, (updated) => {
+      setExecutions((prev) =>
+        prev.map((e) => (e.id === updated.id ? updated : e)),
+      )
+      if (['completed', 'failed', 'cancelled', 'interrupted'].includes(updated.status)) {
+        esRef.current?.close()
+        esRef.current = null
+      }
+    })
+  }, [])
+
   const loadExecutions = useCallback(async () => {
     try {
       const data = await fetchBotExecutions(botId)
       setExecutions(data)
+      const active = data.find((e) => e.status === 'running' || e.status === 'queued')
+      if (active && !esRef.current) {
+        openStream(active.id)
+      }
     } catch { /* ignore */ }
-  }, [botId])
+  }, [botId, openStream])
 
   useEffect(() => {
     fetchBot(botId).then(setBot).catch(() => setError('Bot no encontrado'))
@@ -54,16 +71,7 @@ export default function BotPage({ botId, children, getInputData }: Props) {
       const ex = await executeBot(botId, inputData)
       setSuccessMsg(`Ejecución encolada correctamente (ID: ${ex.id.slice(0, 8)}…)`)
       loadExecutions()
-
-      if (esRef.current) esRef.current.close()
-      esRef.current = streamExecution(ex.id, (updated) => {
-        setExecutions((prev) =>
-          prev.map((e) => (e.id === updated.id ? updated : e)),
-        )
-        if (['completed', 'failed', 'cancelled', 'interrupted'].includes(updated.status)) {
-          esRef.current?.close()
-        }
-      })
+      openStream(ex.id)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       try {

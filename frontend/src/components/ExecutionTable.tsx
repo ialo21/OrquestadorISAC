@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer } from 'lucide-react'
+import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X } from 'lucide-react'
 import type { BotExecution, ExecutionFile, ExecutionFiles } from '@/types'
 import { cn, formatDate, formatDuration, formatBytes, formatElapsed } from '@/lib/utils'
 import { fetchExecutionFiles, downloadZipUrl, cancelExecution } from '@/services/api'
@@ -21,10 +21,52 @@ interface Props {
   onCancelSuccess?: () => void
 }
 
+function ImagePreviewModal({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-xl shadow-2xl max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+          <span className="text-sm font-medium text-gray-700 truncate max-w-[400px]">{name}</span>
+          <button
+            onClick={onClose}
+            className="ml-4 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="overflow-auto p-4 flex items-center justify-center bg-gray-50">
+          <img
+            src={src}
+            alt={name}
+            className="max-w-full max-h-[75vh] object-contain rounded shadow"
+          />
+        </div>
+        <div className="px-4 py-2 border-t border-gray-100 flex justify-end">
+          <a
+            href={src}
+            download={name}
+            className="inline-flex items-center gap-1.5 text-xs bg-primary-50 hover:bg-primary-100 border border-primary-200 text-primary-700 px-3 py-1.5 rounded-md transition-colors"
+          >
+            <Download className="w-3 h-3" />
+            Descargar imagen
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FilesRow({ execution }: { execution: BotExecution }) {
   const [files, setFiles] = useState<ExecutionFiles | null>(null)
   const [loading, setLoading] = useState(false)
   const [viewFile, setViewFile] = useState<ExecutionFile | null>(null)
+  const [previewImage, setPreviewImage] = useState<{ src: string; name: string } | null>(null)
   const token = localStorage.getItem('token')
   const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8002'
 
@@ -46,6 +88,23 @@ function FilesRow({ execution }: { execution: BotExecution }) {
 
   const isTextFile = (name: string) =>
     /\.(log|txt|json|csv|xml|html|md|yaml|yml|ini|cfg|out|err)$/i.test(name)
+
+  const isImageFile = (name: string) =>
+    /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(name)
+
+  const zipFilename = (() => {
+    const botSlug = execution.bot_id ?? 'bot'
+    const inputData = execution.input_data ?? {}
+    const desde = inputData['fecha_desde'] ?? inputData['FECHA_DESDE']
+    const hasta = inputData['fecha_hasta'] ?? inputData['FECHA_HASTA']
+    if (desde && hasta) {
+      return `evidencia_${botSlug}_${desde}_al_${hasta}.zip`
+    }
+    const dateStr = execution.queued_at
+      ? new Date(execution.queued_at).toISOString().slice(0, 10)
+      : 'sin-fecha'
+    return `evidencia_${botSlug}_${dateStr}.zip`
+  })()
 
   return (
     <div>
@@ -92,6 +151,15 @@ function FilesRow({ execution }: { execution: BotExecution }) {
                           <Eye className="w-3 h-3" />
                         </button>
                       )}
+                      {isImageFile(f.name) && (
+                        <button
+                          onClick={() => setPreviewImage({ src: fileUrl(f.path), name: f.name })}
+                          title="Ver imagen"
+                          className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                        >
+                          <ImageIcon className="w-3 h-3" />
+                        </button>
+                      )}
                       <a
                         href={fileUrl(f.path)}
                         download={f.name}
@@ -109,8 +177,9 @@ function FilesRow({ execution }: { execution: BotExecution }) {
           ))}
           <a
             href={`${downloadZipUrl(execution.id)}?token=${token}`}
-            download
+            download={zipFilename}
             className="inline-flex items-center gap-1 text-xs bg-gray-50 hover:bg-primary-50 border border-gray-200 hover:border-primary-200 text-gray-600 hover:text-primary-700 px-2 py-1 rounded-md transition-colors"
+            title={zipFilename}
           >
             <Archive className="w-3 h-3" />
             Descargar ZIP
@@ -122,6 +191,13 @@ function FilesRow({ execution }: { execution: BotExecution }) {
           execId={execution.id}
           file={viewFile}
           onClose={() => setViewFile(null)}
+        />
+      )}
+      {previewImage && (
+        <ImagePreviewModal
+          src={previewImage.src}
+          name={previewImage.name}
+          onClose={() => setPreviewImage(null)}
         />
       )}
     </div>
