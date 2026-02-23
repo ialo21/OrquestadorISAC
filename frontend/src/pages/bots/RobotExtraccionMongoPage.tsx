@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { CalendarDays, AlertTriangle } from 'lucide-react'
+import { CalendarDays, AlertTriangle, Info } from 'lucide-react'
 import BotPage from './BotPage'
 import type { GetInputDataFn } from './BotPage'
 
@@ -18,10 +18,17 @@ export default function RobotExtraccionMongoPage() {
   const getInputData: GetInputDataFn = useCallback(() => {
     setValidationError('')
 
+    // Sin fechas → lógica automática del bot (no se pasan env vars)
+    if (!fechaDesde && !fechaHasta) {
+      return {} as Record<string, string>
+    }
+
+    // Solo una de las dos → error
     if (!fechaDesde || !fechaHasta) {
-      setValidationError('Ambas fechas son obligatorias.')
+      setValidationError('Si ingresas una fecha, debes completar ambas.')
       return null
     }
+
     if (fechaDesde > fechaHasta) {
       setValidationError('La fecha "desde" no puede ser posterior a la fecha "hasta".')
       return null
@@ -45,7 +52,7 @@ export default function RobotExtraccionMongoPage() {
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <CalendarDays className="w-4 h-4 text-primary-500" />
           <span className="font-medium">Rango de extracción de logs</span>
-          <span className="text-xs text-gray-400">(máx. {MAX_RANGE_DAYS} días)</span>
+          <span className="text-xs text-gray-400">(máx. {MAX_RANGE_DAYS} días · opcional)</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -71,6 +78,16 @@ export default function RobotExtraccionMongoPage() {
 
         {rangeInfo && !validationError && (
           <p className="text-xs text-gray-400">Rango seleccionado: {rangeInfo}</p>
+        )}
+
+        {!fechaDesde && !fechaHasta && (
+          <div className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+            <Info className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-gray-500">
+              Sin fechas seleccionadas el bot calculará el rango automáticamente
+              según el día de ejecución.
+            </p>
+          </div>
         )}
 
         {validationError && (
