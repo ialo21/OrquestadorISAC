@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
 import type { BotExecution, ExecutionFile, ExecutionFiles } from '@/types'
 import { cn, formatDate, formatDuration, formatBytes, formatElapsed } from '@/lib/utils'
 import { fetchExecutionFiles, downloadZipUrl, cancelExecution } from '@/services/api'
@@ -21,18 +21,51 @@ interface Props {
   onCancelSuccess?: () => void
 }
 
-function ImagePreviewModal({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+interface ImagePreviewModalProps {
+  images: { src: string; name: string }[]
+  initialIndex: number
+  onClose: () => void
+}
+
+function ImagePreviewModal({ images, initialIndex, onClose }: ImagePreviewModalProps) {
+  const [index, setIndex] = useState(initialIndex)
+  const current = images[index]
+  const hasPrev = index > 0
+  const hasNext = index < images.length - 1
+
+  const prev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), [])
+  const next = useCallback(() => setIndex((i) => Math.min(images.length - 1, i + 1)), [images.length])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') prev()
+      else if (e.key === 'ArrowRight') next()
+      else if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [prev, next, onClose])
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
       <div
-        className="relative bg-white rounded-xl shadow-2xl max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxWidth: '90vw', maxHeight: '92vh', width: 'max-content' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-          <span className="text-sm font-medium text-gray-700 truncate max-w-[400px]">{name}</span>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-medium text-gray-700 truncate max-w-[420px]">{current.name}</span>
+            {images.length > 1 && (
+              <span className="text-xs text-gray-400 flex-shrink-0 bg-gray-100 px-2 py-0.5 rounded-full">
+                {index + 1} / {images.length}
+              </span>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="ml-4 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
@@ -40,21 +73,69 @@ function ImagePreviewModal({ src, name, onClose }: { src: string; name: string; 
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="overflow-auto p-4 flex items-center justify-center bg-gray-50">
+
+        {/* Image area with nav arrows */}
+        <div className="relative flex items-center justify-center bg-gray-50 overflow-auto p-4" style={{ minHeight: '200px' }}>
+          {hasPrev && (
+            <button
+              onClick={prev}
+              className="absolute left-2 z-10 bg-white/90 hover:bg-white border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-900 rounded-full p-1.5 shadow transition-all"
+              title="Anterior (←)"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+
           <img
-            src={src}
-            alt={name}
-            className="max-w-full max-h-[75vh] object-contain rounded shadow"
+            key={current.src}
+            src={current.src}
+            alt={current.name}
+            className="max-w-full object-contain rounded shadow"
+            style={{ maxHeight: '72vh' }}
           />
+
+          {hasNext && (
+            <button
+              onClick={next}
+              className="absolute right-2 z-10 bg-white/90 hover:bg-white border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-900 rounded-full p-1.5 shadow transition-all"
+              title="Siguiente (→)"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+          )}
         </div>
-        <div className="px-4 py-2 border-t border-gray-100 flex justify-end">
+
+        {/* Thumbnails strip */}
+        {images.length > 1 && (
+          <div className="flex gap-1.5 px-4 py-2 border-t border-gray-100 overflow-x-auto">
+            {images.map((img, i) => (
+              <button
+                key={img.src}
+                onClick={() => setIndex(i)}
+                className={cn(
+                  'flex-shrink-0 w-12 h-12 rounded border-2 overflow-hidden transition-all',
+                  i === index
+                    ? 'border-primary-500 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-400 opacity-60 hover:opacity-100',
+                )}
+                title={img.name}
+              >
+                <img src={img.src} alt={img.name} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+          <span className="text-xs text-gray-400 truncate max-w-[300px]">{current.name}</span>
           <a
-            href={src}
-            download={name}
-            className="inline-flex items-center gap-1.5 text-xs bg-primary-50 hover:bg-primary-100 border border-primary-200 text-primary-700 px-3 py-1.5 rounded-md transition-colors"
+            href={current.src}
+            download={current.name}
+            className="inline-flex items-center gap-1.5 text-xs bg-primary-50 hover:bg-primary-100 border border-primary-200 text-primary-700 px-3 py-1.5 rounded-md transition-colors flex-shrink-0"
           >
             <Download className="w-3 h-3" />
-            Descargar imagen
+            Descargar
           </a>
         </div>
       </div>
@@ -66,7 +147,7 @@ function FilesRow({ execution }: { execution: BotExecution }) {
   const [files, setFiles] = useState<ExecutionFiles | null>(null)
   const [loading, setLoading] = useState(false)
   const [viewFile, setViewFile] = useState<ExecutionFile | null>(null)
-  const [previewImage, setPreviewImage] = useState<{ src: string; name: string } | null>(null)
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
   const token = localStorage.getItem('token')
   const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8002'
 
@@ -91,6 +172,12 @@ function FilesRow({ execution }: { execution: BotExecution }) {
 
   const isImageFile = (name: string) =>
     /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(name)
+
+  const allImages = files
+    ? [...files.logs, ...files.resultados]
+        .filter((f) => isImageFile(f.name))
+        .map((f) => ({ src: fileUrl(f.path), name: f.name }))
+    : []
 
   const zipFilename = (() => {
     const botSlug = execution.bot_id ?? 'bot'
@@ -153,7 +240,7 @@ function FilesRow({ execution }: { execution: BotExecution }) {
                       )}
                       {isImageFile(f.name) && (
                         <button
-                          onClick={() => setPreviewImage({ src: fileUrl(f.path), name: f.name })}
+                          onClick={() => setPreviewIndex(allImages.findIndex((img) => img.name === f.name))}
                           title="Ver imagen"
                           className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
                         >
@@ -193,11 +280,11 @@ function FilesRow({ execution }: { execution: BotExecution }) {
           onClose={() => setViewFile(null)}
         />
       )}
-      {previewImage && (
+      {previewIndex !== null && allImages.length > 0 && (
         <ImagePreviewModal
-          src={previewImage.src}
-          name={previewImage.name}
-          onClose={() => setPreviewImage(null)}
+          images={allImages}
+          initialIndex={previewIndex}
+          onClose={() => setPreviewIndex(null)}
         />
       )}
     </div>
