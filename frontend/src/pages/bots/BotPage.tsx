@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Play, Loader2, Bot, AlertCircle, RefreshCw, Timer } from 'lucide-react'
+import { Play, Loader2, Bot, AlertCircle, RefreshCw, Timer, ChevronDown, SlidersHorizontal, CalendarClock } from 'lucide-react'
 import { fetchBot, executeBot, fetchBotExecutions, streamExecution } from '@/services/api'
 import type { Bot as BotType, BotExecution } from '@/types'
 import ExecutionTable from '@/components/ExecutionTable'
@@ -21,6 +21,8 @@ export default function BotPage({ botId, children, getInputData }: Props) {
   const [launching, setLaunching] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [paramsOpen, setParamsOpen] = useState(true)
+  const [scheduleOpen, setScheduleOpen] = useState(true)
   const esRef = useRef<EventSource | null>(null)
 
   const openStream = useCallback((execId: string) => {
@@ -184,19 +186,54 @@ export default function BotPage({ botId, children, getInputData }: Props) {
 
       {/* Sección de parametrización — reservada por bot */}
       {children && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <h2 className="font-semibold text-gray-800">Parametrización</h2>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setParamsOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-primary-500" />
+              <h2 className="font-semibold text-gray-800">Parametrización</h2>
+            </div>
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-transform duration-300',
+                paramsOpen ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          </button>
+          <div className={cn('collapsible-grid', paramsOpen ? 'open' : 'closed')}>
+            <div className="overflow-hidden">
+              <div className="px-5 pb-5 pt-1 border-t border-gray-50">{children}</div>
+            </div>
           </div>
-          <div className="p-5">{children}</div>
         </div>
       )}
 
       {/* Programación — solo si el bot la soporta */}
       {bot.supports_scheduling && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="p-5">
-            <ScheduleSection botId={botId} />
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setScheduleOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-primary-500" />
+              <h2 className="font-semibold text-gray-800">Programación</h2>
+            </div>
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-transform duration-300',
+                scheduleOpen ? 'rotate-0' : '-rotate-90',
+              )}
+            />
+          </button>
+          <div className={cn('collapsible-grid', scheduleOpen ? 'open' : 'closed')}>
+            <div className="overflow-hidden">
+              <div className="px-5 pb-5 pt-1 border-t border-gray-50">
+                <ScheduleSection botId={botId} />
+              </div>
+            </div>
           </div>
         </div>
       )}

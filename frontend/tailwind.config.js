@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      gridTemplateRows: {
+        '0fr': '0fr',
+        '1fr': '1fr',
+      },
       colors: {
         primary: {
           50: '#eff6ff',
