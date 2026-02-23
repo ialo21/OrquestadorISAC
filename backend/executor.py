@@ -127,6 +127,10 @@ async def run_execution(execution_id: str):
         "EJECUCION_RESULTADOS_DIR": str(resultados_dir.resolve()),
     }
 
+    input_data: dict = execution.get("input_data", {})
+    for key, value in input_data.items():
+        env[f"BOT_INPUT_{key.upper()}"] = str(value)
+
     start_time = datetime.now()
     exit_code = -1
 

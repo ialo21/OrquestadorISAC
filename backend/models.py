@@ -46,6 +46,8 @@ class Bot(BaseModel):
     page_slug: str
     enabled: bool = True
     icon: str = "Bot"
+    supports_data_input: bool = False
+    supports_scheduling: bool = False
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -58,6 +60,8 @@ class BotCreate(BaseModel):
     page_slug: str
     enabled: bool = True
     icon: str = "Bot"
+    supports_data_input: bool = False
+    supports_scheduling: bool = False
 
 
 class BotUpdate(BaseModel):
@@ -69,6 +73,8 @@ class BotUpdate(BaseModel):
     page_slug: Optional[str] = None
     enabled: Optional[bool] = None
     icon: Optional[str] = None
+    supports_data_input: Optional[bool] = None
+    supports_scheduling: Optional[bool] = None
 
 
 # ── Ejecuciones ─────────────────────────────────────────────────────────────
@@ -90,10 +96,55 @@ class BotExecution(BaseModel):
     exit_code: Optional[int] = None
     error_message: str = ""
     duration_seconds: float = 0.0
+    input_data: dict = {}
 
 
 class ExecutionRequest(BaseModel):
-    pass  # Sin parámetros extra por ahora; cada bot tendrá su propio endpoint
+    input_data: dict = {}
+
+
+# ── Programación ─────────────────────────────────────────────────────────────
+
+ScheduleType = Literal["dates", "frequency"]
+FrequencyKind = Literal["daily", "weekly", "biweekly", "monthly"]
+
+
+class BotSchedule(BaseModel):
+    id: str = Field(default_factory=gen_id)
+    bot_id: str
+    enabled: bool = True
+    type: ScheduleType = "dates"
+    scheduled_dates: list[str] = []
+    frequency: Optional[FrequencyKind] = None
+    frequency_days: list[int] = []
+    frequency_weekday: Optional[int] = None
+    time: str = "08:00"
+    input_data: dict = {}
+    created_by: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class ScheduleCreate(BaseModel):
+    bot_id: str
+    enabled: bool = True
+    type: ScheduleType = "dates"
+    scheduled_dates: list[str] = []
+    frequency: Optional[FrequencyKind] = None
+    frequency_days: list[int] = []
+    frequency_weekday: Optional[int] = None
+    time: str = "08:00"
+    input_data: dict = {}
+
+
+class ScheduleUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    type: Optional[ScheduleType] = None
+    scheduled_dates: Optional[list[str]] = None
+    frequency: Optional[FrequencyKind] = None
+    frequency_days: Optional[list[int]] = None
+    frequency_weekday: Optional[int] = None
+    time: Optional[str] = None
+    input_data: Optional[dict] = None
 
 
 # ── Estadísticas ─────────────────────────────────────────────────────────────

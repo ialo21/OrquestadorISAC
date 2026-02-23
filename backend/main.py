@@ -3,8 +3,10 @@ Orquestador de Bots - Backend API
 FastAPI application for managing and orchestrating RPA/automation bots.
 """
 
+import asyncio
 import io
 import json
+import logging
 import os
 import zipfile
 from contextlib import asynccontextmanager
@@ -24,11 +26,16 @@ from sse_starlette.sse import EventSourceResponse
 import auth
 import executor
 import queue_manager
-from models import Bot, BotCreate, BotExecution, BotUpdate, Stats, User, UserBotsUpdate, UserRoleUpdate
+from models import (
+    Bot, BotCreate, BotExecution, BotUpdate, ExecutionRequest,
+    BotSchedule, ScheduleCreate, ScheduleUpdate,
+    Stats, User, UserBotsUpdate, UserRoleUpdate,
+)
 
 DATA_DIR = Path(__file__).parent / "data"
 BOTS_FILE = DATA_DIR / "bots.json"
 EXECUTIONS_FILE = DATA_DIR / "executions.json"
+SCHEDULES_FILE = DATA_DIR / "schedules.json"
 EJECUCIONES_DIR = Path(__file__).parent / "ejecuciones"
 
 MAX_HEADLESS = int(os.getenv("MAX_HEADLESS_WORKERS", "3"))
@@ -61,6 +68,8 @@ def _init_default_bots():
             script_path=r"c:\apps\RobotExtraccionMongo\main.py",
             page_slug="robot-extraccion-mongo",
             icon="Database",
+            supports_data_input=True,
+            supports_scheduling=True,
         ),
         Bot(
             id="rpa-moni-objetos",
@@ -91,18 +100,117 @@ def _recover_interrupted():
 
 # ── Lifespan ─────────────────────────────────────────────────────────────────
 
+_scheduler_task: Optional[asyncio.Task] = None
+
+
+async def _scheduler_loop():
+    """Background task: checks schedules every 60s and enqueues due executions."""
+    import asyncio as _aio
+    logger = logging.getLogger("scheduler")
+    while True:
+        try:
+            await _check_schedules(logger)
+        except Exception as e:
+            logger.error("Error en scheduler: %s", e)
+        await _aio.sleep(60)
+
+
+async def _check_schedules(logger):
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
+    current_weekday = now.weekday()
+    current_day = now.day
+
+    schedules = _load(SCHEDULES_FILE)
+    if not schedules:
+        return
+
+    for sched in schedules:
+        if not sched.get("enabled", True):
+            continue
+
+        should_run = False
+        sched_time = sched.get("time", "08:00")
+
+        if current_time != sched_time:
+            continue
+
+        stype = sched.get("type", "dates")
+
+        if stype == "dates":
+            if today_str in sched.get("scheduled_dates", []):
+                should_run = True
+        elif stype == "frequency":
+            freq = sched.get("frequency")
+            if freq == "daily":
+                should_run = True
+            elif freq == "weekly":
+                if current_weekday == sched.get("frequency_weekday", 0):
+                    should_run = True
+            elif freq == "biweekly":
+                if current_day in sched.get("frequency_days", [1, 16]):
+                    should_run = True
+            elif freq == "monthly":
+                if current_day in sched.get("frequency_days", [1]):
+                    should_run = True
+
+        if not should_run:
+            continue
+
+        already_ran = _schedule_already_ran_today(sched["id"], today_str)
+        if already_ran:
+            continue
+
+        bot_id = sched["bot_id"]
+        bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
+        if not bot or not bot.get("enabled", True):
+            continue
+
+        logger.info("Scheduler: ejecutando bot %s por schedule %s", bot_id, sched["id"])
+        execution = BotExecution(
+            bot_id=bot_id,
+            bot_name=bot["name"],
+            triggered_by="scheduler",
+            triggered_by_name="Programación automática",
+            input_data=sched.get("input_data", {}),
+        )
+        executions = _load(EXECUTIONS_FILE)
+        executions.insert(0, execution.model_dump())
+        _save(EXECUTIONS_FILE, executions)
+
+        await queue_manager.enqueue(execution.id, bot.get("requires_ui", False))
+
+
+def _schedule_already_ran_today(schedule_id: str, today_str: str) -> bool:
+    executions = _load(EXECUTIONS_FILE)
+    for ex in executions:
+        if (
+            ex.get("triggered_by") == "scheduler"
+            and ex.get("queued_at", "").startswith(today_str)
+        ):
+            return True
+    return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _scheduler_task
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     EJECUCIONES_DIR.mkdir(parents=True, exist_ok=True)
     if not EXECUTIONS_FILE.exists():
         _save(EXECUTIONS_FILE, [])
+    if not SCHEDULES_FILE.exists():
+        _save(SCHEDULES_FILE, [])
     if not auth.USERS_FILE.exists():
         _save(auth.USERS_FILE, [])
     _init_default_bots()
     _recover_interrupted()
     queue_manager.init_workers(executor.run_execution, MAX_HEADLESS)
+    _scheduler_task = asyncio.create_task(_scheduler_loop())
     yield
+    if _scheduler_task:
+        _scheduler_task.cancel()
     queue_manager.stop_workers()
 
 
@@ -182,7 +290,11 @@ def get_bot(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
 
 
 @app.post("/api/bots/{bot_id}/execute")
-async def execute_bot(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
+async def execute_bot(
+    bot_id: str,
+    body: ExecutionRequest = ExecutionRequest(),
+    current_user: dict = Depends(auth.get_current_user),
+):
     bots = _load(BOTS_FILE)
     bot = next((b for b in bots if b["id"] == bot_id), None)
     if not bot:
@@ -198,6 +310,7 @@ async def execute_bot(bot_id: str, current_user: dict = Depends(auth.get_current
         bot_name=bot["name"],
         triggered_by=current_user["email"],
         triggered_by_name=current_user["name"],
+        input_data=body.input_data,
     )
     executions = _load(EXECUTIONS_FILE)
     executions.insert(0, execution.model_dump())
@@ -414,6 +527,71 @@ def get_stats(current_user: dict = Depends(auth.get_current_user)):
 @app.get("/api/queue-status")
 def queue_status(current_user: dict = Depends(auth.get_current_user)):
     return queue_manager.get_queue_status()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SCHEDULES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/bots/{bot_id}/schedules")
+def list_schedules(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
+    return [s for s in _load(SCHEDULES_FILE) if s["bot_id"] == bot_id]
+
+
+@app.post("/api/bots/{bot_id}/schedules")
+def create_schedule(
+    bot_id: str,
+    body: ScheduleCreate,
+    current_user: dict = Depends(auth.get_current_user),
+):
+    if current_user["role"] not in ("superadmin", "admin"):
+        raise HTTPException(403, "Solo admins pueden crear programaciones")
+
+    bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
+    if not bot:
+        raise HTTPException(404, "Bot no encontrado")
+    if not bot.get("supports_scheduling", False):
+        raise HTTPException(400, "Este bot no soporta programación")
+
+    sched = BotSchedule(
+        **body.model_dump(),
+        bot_id=bot_id,
+        created_by=current_user["email"],
+    )
+    schedules = _load(SCHEDULES_FILE)
+    schedules.append(sched.model_dump())
+    _save(SCHEDULES_FILE, schedules)
+    return sched.model_dump()
+
+
+@app.put("/api/schedules/{schedule_id}")
+def update_schedule(
+    schedule_id: str,
+    body: ScheduleUpdate,
+    current_user: dict = Depends(auth.get_current_user),
+):
+    if current_user["role"] not in ("superadmin", "admin"):
+        raise HTTPException(403, "Solo admins pueden editar programaciones")
+
+    schedules = _load(SCHEDULES_FILE)
+    sched = next((s for s in schedules if s["id"] == schedule_id), None)
+    if not sched:
+        raise HTTPException(404, "Programación no encontrada")
+    for k, v in body.model_dump(exclude_none=True).items():
+        sched[k] = v
+    _save(SCHEDULES_FILE, schedules)
+    return sched
+
+
+@app.delete("/api/schedules/{schedule_id}")
+def delete_schedule(schedule_id: str, current_user: dict = Depends(auth.get_current_user)):
+    if current_user["role"] not in ("superadmin", "admin"):
+        raise HTTPException(403, "Solo admins pueden eliminar programaciones")
+
+    schedules = _load(SCHEDULES_FILE)
+    schedules = [s for s in schedules if s["id"] != schedule_id]
+    _save(SCHEDULES_FILE, schedules)
+    return {"ok": True}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

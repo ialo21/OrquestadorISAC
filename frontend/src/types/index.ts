@@ -21,6 +21,8 @@ export interface Bot {
   page_slug: string
   enabled: boolean
   icon: string
+  supports_data_input: boolean
+  supports_scheduling: boolean
   created_at: string
 }
 
@@ -40,6 +42,7 @@ export interface BotExecution {
   exit_code?: number
   error_message: string
   duration_seconds: number
+  input_data: Record<string, string>
 }
 
 export interface ExecutionFile {
@@ -73,4 +76,24 @@ export interface BotCreate {
   page_slug: string
   enabled: boolean
   icon: string
+  supports_data_input: boolean
+  supports_scheduling: boolean
+}
+
+export type ScheduleType = 'dates' | 'frequency'
+export type FrequencyKind = 'daily' | 'weekly' | 'biweekly' | 'monthly'
+
+export interface BotSchedule {
+  id: string
+  bot_id: string
+  enabled: boolean
+  type: ScheduleType
+  scheduled_dates: string[]
+  frequency?: FrequencyKind
+  frequency_days: number[]
+  frequency_weekday?: number
+  time: string
+  input_data: Record<string, string>
+  created_by: string
+  created_at: string
 }

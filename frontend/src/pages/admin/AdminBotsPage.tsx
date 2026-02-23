@@ -8,6 +8,7 @@ const EMPTY_FORM: BotCreate = {
   name: '', description: '', requires_ui: false,
   script_path: '', script_args: [], page_slug: '',
   enabled: true, icon: 'Bot',
+  supports_data_input: false, supports_scheduling: false,
 }
 
 export default function AdminBotsPage() {
@@ -27,7 +28,7 @@ export default function AdminBotsPage() {
 
   const openCreate = () => { setForm(EMPTY_FORM); setEditing(null); setShowCreate(true); setError('') }
   const openEdit = (bot: Bot) => {
-    setForm({ name: bot.name, description: bot.description, requires_ui: bot.requires_ui, script_path: bot.script_path, script_args: bot.script_args, page_slug: bot.page_slug, enabled: bot.enabled, icon: bot.icon })
+    setForm({ name: bot.name, description: bot.description, requires_ui: bot.requires_ui, script_path: bot.script_path, script_args: bot.script_args, page_slug: bot.page_slug, enabled: bot.enabled, icon: bot.icon, supports_data_input: bot.supports_data_input ?? false, supports_scheduling: bot.supports_scheduling ?? false })
     setEditing(bot.id); setShowCreate(true); setError('')
   }
 
@@ -98,7 +99,7 @@ export default function AdminBotsPage() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
               />
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 flex-wrap">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={form.requires_ui} onChange={(e) => setForm({ ...form, requires_ui: e.target.checked })} className="rounded" />
                 Requiere UI (máx 1 simultáneo)
@@ -106,6 +107,14 @@ export default function AdminBotsPage() {
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} className="rounded" />
                 Habilitado
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={form.supports_data_input} onChange={(e) => setForm({ ...form, supports_data_input: e.target.checked })} className="rounded" />
+                Entrada de datos configurable
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={form.supports_scheduling} onChange={(e) => setForm({ ...form, supports_scheduling: e.target.checked })} className="rounded" />
+                Programación configurable
               </label>
             </div>
           </div>

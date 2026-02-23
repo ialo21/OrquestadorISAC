@@ -3,15 +3,19 @@ import { Play, Loader2, Bot, AlertCircle, RefreshCw, Timer } from 'lucide-react'
 import { fetchBot, executeBot, fetchBotExecutions, streamExecution } from '@/services/api'
 import type { Bot as BotType, BotExecution } from '@/types'
 import ExecutionTable from '@/components/ExecutionTable'
+import ScheduleSection from '@/components/ScheduleSection'
 import { cn, formatElapsed } from '@/lib/utils'
 import { useLiveTimer } from '@/hooks/useLiveTimer'
+
+export type GetInputDataFn = () => Record<string, string> | null
 
 interface Props {
   botId: string
   children?: React.ReactNode
+  getInputData?: GetInputDataFn
 }
 
-export default function BotPage({ botId, children }: Props) {
+export default function BotPage({ botId, children, getInputData }: Props) {
   const [bot, setBot] = useState<BotType | null>(null)
   const [executions, setExecutions] = useState<BotExecution[]>([])
   const [launching, setLaunching] = useState(false)
@@ -35,12 +39,22 @@ export default function BotPage({ botId, children }: Props) {
     setLaunching(true)
     setError('')
     setSuccessMsg('')
+
+    let inputData: Record<string, string> | undefined
+    if (getInputData) {
+      const data = getInputData()
+      if (data === null) {
+        setLaunching(false)
+        return
+      }
+      inputData = data
+    }
+
     try {
-      const ex = await executeBot(botId)
+      const ex = await executeBot(botId, inputData)
       setSuccessMsg(`Ejecución encolada correctamente (ID: ${ex.id.slice(0, 8)}…)`)
       loadExecutions()
 
-      // SSE: seguir estado de esta ejecución
       if (esRef.current) esRef.current.close()
       esRef.current = streamExecution(ex.id, (updated) => {
         setExecutions((prev) =>
@@ -167,6 +181,15 @@ export default function BotPage({ botId, children }: Props) {
             <h2 className="font-semibold text-gray-800">Parametrización</h2>
           </div>
           <div className="p-5">{children}</div>
+        </div>
+      )}
+
+      {/* Programación — solo si el bot la soporta */}
+      {bot.supports_scheduling && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="p-5">
+            <ScheduleSection botId={botId} />
+          </div>
         </div>
       )}
 

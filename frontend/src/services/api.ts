@@ -1,4 +1,4 @@
-import type { Bot, BotCreate, BotExecution, ExecutionFiles, Stats, User, UserRole } from '@/types'
+import type { Bot, BotCreate, BotExecution, BotSchedule, ExecutionFiles, Stats, User, UserRole } from '@/types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8002'
 
@@ -48,7 +48,8 @@ export const fetchMe = () => get<User>('/api/auth/me')
 // ── Bots ─────────────────────────────────────────────────────────────────────
 export const fetchBots = () => get<Bot[]>('/api/bots')
 export const fetchBot = (id: string) => get<Bot>(`/api/bots/${id}`)
-export const executeBot = (id: string) => post<BotExecution>(`/api/bots/${id}/execute`)
+export const executeBot = (id: string, inputData?: Record<string, string>) =>
+  post<BotExecution>(`/api/bots/${id}/execute`, { input_data: inputData ?? {} })
 export const fetchBotExecutions = (id: string) => get<BotExecution[]>(`/api/bots/${id}/executions`)
 
 // ── Ejecuciones ───────────────────────────────────────────────────────────────
@@ -83,3 +84,11 @@ export const updateUserBots = (userId: string, allowed_bot_ids: string[]) =>
 export const createBot = (data: BotCreate) => post<Bot>('/api/admin/bots', data)
 export const updateBot = (id: string, data: Partial<BotCreate>) => put<Bot>(`/api/admin/bots/${id}`, data)
 export const deleteBot = (id: string) => del<{ ok: boolean }>(`/api/admin/bots/${id}`)
+
+// ── Schedules ─────────────────────────────────────────────────────────────────
+export const fetchBotSchedules = (botId: string) => get<BotSchedule[]>(`/api/bots/${botId}/schedules`)
+export const createSchedule = (botId: string, data: Omit<BotSchedule, 'id' | 'bot_id' | 'created_by' | 'created_at'>) =>
+  post<BotSchedule>(`/api/bots/${botId}/schedules`, { ...data, bot_id: botId })
+export const updateSchedule = (scheduleId: string, data: Partial<BotSchedule>) =>
+  put<BotSchedule>(`/api/schedules/${scheduleId}`, data)
+export const deleteSchedule = (scheduleId: string) => del<{ ok: boolean }>(`/api/schedules/${scheduleId}`)
