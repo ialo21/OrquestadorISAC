@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  CalendarClock, Plus, Trash2, Save, X, Loader2, ToggleLeft, ToggleRight, Clock,
+  Plus, Trash2, Save, X, Loader2, ToggleLeft, ToggleRight, Clock,
 } from 'lucide-react'
 import {
   fetchBotSchedules, createSchedule, updateSchedule, deleteSchedule,
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 
 interface Props {
   botId: string
+  onOpenCreate?: (fn: () => void) => void
 }
 
 const FREQ_LABELS: Record<FrequencyKind, string> = {
@@ -32,7 +33,7 @@ const EMPTY_FORM = {
   input_data: {} as Record<string, string>,
 }
 
-export default function ScheduleSection({ botId }: Props) {
+export default function ScheduleSection({ botId, onOpenCreate }: Props) {
   const [schedules, setSchedules] = useState<BotSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -52,12 +53,18 @@ export default function ScheduleSection({ botId }: Props) {
 
   useEffect(() => { load() }, [load])
 
-  const openCreate = () => {
+  useEffect(() => {
+    onOpenCreate?.(openCreate)
+  // Solo registrar una vez al montar
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const openCreate = useCallback(() => {
     setForm(EMPTY_FORM)
     setEditingId(null)
     setShowForm(true)
     setError('')
-  }
+  }, [])
 
   const openEdit = (s: BotSchedule) => {
     setForm({
@@ -133,19 +140,6 @@ export default function ScheduleSection({ botId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-          <CalendarClock className="w-4 h-4 text-primary-500" />
-          Programación
-        </h3>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 text-xs bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Nueva
-        </button>
-      </div>
 
       {/* Lista de schedules existentes */}
       {schedules.length === 0 && !showForm && (

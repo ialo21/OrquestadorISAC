@@ -19,7 +19,7 @@ export default function Header() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [botsExpanded, setBotsExpanded] = useState(true)
 
   useEffect(() => {
@@ -101,7 +101,15 @@ export default function Header() {
           {bots.length > 0 && (
             <div>
               <button
-                onClick={() => setBotsExpanded(!botsExpanded)}
+                onClick={() => {
+                  if (!open) {
+                    // Colapsado: expandir barra y asegurar bots visibles
+                    setOpen(true)
+                    setBotsExpanded(true)
+                  } else {
+                    setBotsExpanded((e) => !e)
+                  }
+                }}
                 title={!open ? 'Bots' : undefined}
                 className={cn(
                   'w-full flex items-center rounded-lg text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600 transition-colors',
