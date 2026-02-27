@@ -226,6 +226,7 @@ app.add_middleware(
     allow_origins=[
         os.getenv("FRONTEND_URL", "http://localhost:5175"),
         "http://localhost:5175",
+        "http://10.43.5.105:5175",
         "http://10.43.5.105.nip.io:5175",
     ],
     allow_credentials=True,
