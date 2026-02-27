@@ -125,7 +125,7 @@ class BotSchedule(BaseModel):
 
 
 class ScheduleCreate(BaseModel):
-    bot_id: str
+    bot_id: Optional[str] = None  # Se recibe por path; aquí es opcional para validar body
     enabled: bool = True
     type: ScheduleType = "dates"
     scheduled_dates: list[str] = []
