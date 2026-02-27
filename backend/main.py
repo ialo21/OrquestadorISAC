@@ -223,14 +223,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("FRONTEND_URL", "http://localhost:5175"),
-        "http://localhost:5175",
-        "http://10.43.5.105:5175",
-        "http://10.43.5.105:8002",
-        "http://10.43.5.105.nip.io:5175",
-        "http://10.43.5.105.nip.io:8002",
-    ],
+    allow_origin_regex=r"http://(localhost|[\d\.]+|[\d\.]+\.nip\.io):(5175|8002)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -572,7 +565,7 @@ def create_schedule(
         raise HTTPException(400, "Este bot no soporta programación")
 
     sched = BotSchedule(
-        **body.model_dump(),
+        **body.model_dump(exclude={'bot_id'}),
         bot_id=bot_id,
         created_by=current_user["email"],
     )
