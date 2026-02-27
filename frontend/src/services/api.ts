@@ -88,7 +88,7 @@ export const deleteBot = (id: string) => del<{ ok: boolean }>(`/api/admin/bots/$
 // ── Schedules ─────────────────────────────────────────────────────────────────
 export const fetchBotSchedules = (botId: string) => get<BotSchedule[]>(`/api/bots/${botId}/schedules`)
 export const createSchedule = (botId: string, data: Omit<BotSchedule, 'id' | 'bot_id' | 'created_by' | 'created_at'>) =>
-  post<BotSchedule>(`/api/bots/${botId}/schedules`, { ...data, bot_id: botId })
+  post<BotSchedule>(`/api/bots/${botId}/schedules`, data)
 export const updateSchedule = (scheduleId: string, data: Partial<BotSchedule>) =>
   put<BotSchedule>(`/api/schedules/${scheduleId}`, data)
 export const deleteSchedule = (scheduleId: string) => del<{ ok: boolean }>(`/api/schedules/${scheduleId}`)

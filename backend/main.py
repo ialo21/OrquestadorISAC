@@ -223,7 +223,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5175"), "http://localhost:5175"],
+    allow_origins=[
+        os.getenv("FRONTEND_URL", "http://localhost:5175"),
+        "http://localhost:5175",
+        "http://10.43.5.105.nip.io:5175",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -560,7 +564,8 @@ def create_schedule(
     bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
     if not bot:
         raise HTTPException(404, "Bot no encontrado")
-    if not bot.get("supports_scheduling", False):
+    # Si el bot no define supports_scheduling, asumimos que SÍ lo soporta (solo bloquea si es False explícito)
+    if bot.get("supports_scheduling") is False:
         raise HTTPException(400, "Este bot no soporta programación")
 
     sched = BotSchedule(
