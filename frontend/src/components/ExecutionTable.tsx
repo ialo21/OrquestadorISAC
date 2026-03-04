@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
-import type { BotExecution, ExecutionFile, ExecutionFiles } from '@/types'
+import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X, ChevronLeft, ChevronRight as ChevronRightIcon, ExternalLink } from 'lucide-react'
+import type { BotExecution, ExecutionFile, ExecutionFiles, ExecutionResultItem } from '@/types'
 import { cn, formatDate, formatDuration, formatBytes, formatElapsed } from '@/lib/utils'
 import { fetchExecutionFiles, downloadZipUrl, cancelExecution } from '@/services/api'
 import LogViewerModal from '@/components/LogViewerModal'
@@ -148,6 +148,7 @@ function FilesRow({ execution }: { execution: BotExecution }) {
   const [loading, setLoading] = useState(false)
   const [viewFile, setViewFile] = useState<ExecutionFile | null>(null)
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const token = localStorage.getItem('token')
   const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8002'
 
@@ -172,9 +173,26 @@ function FilesRow({ execution }: { execution: BotExecution }) {
 
   const isImageFile = (name: string) =>
     /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(name)
+  
+  const toggleFolder = (folderName: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(folderName)) {
+        next.delete(folderName)
+      } else {
+        next.add(folderName)
+      }
+      return next
+    })
+  }
 
   const allImages = files
-    ? [...files.logs, ...files.resultados]
+    ? [
+        ...files.logs,
+        ...files.resultados.flatMap((item) =>
+          item.type === 'folder' ? item.files : [item]
+        )
+      ]
         .filter((f) => isImageFile(f.name))
         .map((f) => ({ src: fileUrl(f.path), name: f.name }))
     : []
@@ -222,55 +240,164 @@ function FilesRow({ execution }: { execution: BotExecution }) {
       </div>
       {files && (
         <div className="mt-2 space-y-2">
-          {(['logs', 'resultados'] as const).map((cat) => (
-            files[cat].length > 0 && (
-              <div key={cat}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{cat}</p>
-                <div className="space-y-1">
-                  {files[cat].map((f) => (
-                    <div key={f.path} className="flex items-center gap-1">
-                      {isTextFile(f.name) && (
-                        <button
-                          onClick={() => setViewFile(f)}
-                          title="Ver contenido"
-                          className="text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0"
-                        >
-                          <Eye className="w-3 h-3" />
-                        </button>
-                      )}
-                      {isImageFile(f.name) && (
-                        <button
-                          onClick={() => setPreviewIndex(allImages.findIndex((img) => img.name === f.name))}
-                          title="Ver imagen"
-                          className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
-                        >
-                          <ImageIcon className="w-3 h-3" />
-                        </button>
-                      )}
-                      <a
-                        href={fileUrl(f.path)}
-                        download={f.name}
-                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 min-w-0"
+          {/* Logs: plana como antes */}
+          {files.logs.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">logs</p>
+              <div className="space-y-1">
+                {files.logs.map((f) => (
+                  <div key={f.path} className="flex items-center gap-1">
+                    {isTextFile(f.name) && (
+                      <button
+                        onClick={() => setViewFile(f)}
+                        title="Ver contenido"
+                        className="text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0"
                       >
-                        <Download className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate max-w-[180px]">{f.name}</span>
-                        <span className="text-gray-400 flex-shrink-0">({formatBytes(f.size)})</span>
-                      </a>
-                    </div>
-                  ))}
-                </div>
+                        <Eye className="w-3 h-3" />
+                      </button>
+                    )}
+                    {isImageFile(f.name) && (
+                      <button
+                        onClick={() => setPreviewIndex(allImages.findIndex((img) => img.name === f.name))}
+                        title="Ver imagen"
+                        className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                      >
+                        <ImageIcon className="w-3 h-3" />
+                      </button>
+                    )}
+                    <a
+                      href={fileUrl(f.path)}
+                      download={f.name}
+                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 min-w-0"
+                    >
+                      <Download className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate max-w-[180px]">{f.name}</span>
+                      <span className="text-gray-400 flex-shrink-0">({formatBytes(f.size)})</span>
+                    </a>
+                  </div>
+                ))}
               </div>
-            )
-          ))}
-          <a
-            href={`${downloadZipUrl(execution.id)}?token=${token}`}
-            download={zipFilename}
-            className="inline-flex items-center gap-1 text-xs bg-gray-50 hover:bg-primary-50 border border-gray-200 hover:border-primary-200 text-gray-600 hover:text-primary-700 px-2 py-1 rounded-md transition-colors"
-            title={zipFilename}
-          >
-            <Archive className="w-3 h-3" />
-            Descargar ZIP
-          </a>
+            </div>
+          )}
+          
+          {/* Resultados: jerárquica con carpetas expandibles */}
+          {files.resultados.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">resultados</p>
+              <div className="space-y-1">
+                {files.resultados.map((item) => {
+                  if (item.type === 'folder') {
+                    const isExpanded = expandedFolders.has(item.name)
+                    return (
+                      <div key={item.name} className="ml-1">
+                        <button
+                          onClick={() => toggleFolder(item.name)}
+                          className="flex items-center gap-1 text-xs text-gray-700 hover:text-primary-700 font-medium mb-0.5"
+                        >
+                          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                          <span>{item.name}</span>
+                          <span className="text-gray-400">({item.files.length})</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="ml-4 space-y-1">
+                            {item.files.map((f) => (
+                              <div key={f.path} className="flex items-center gap-1">
+                                {isTextFile(f.name) && (
+                                  <button
+                                    onClick={() => setViewFile(f)}
+                                    title="Ver contenido"
+                                    className="text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                  </button>
+                                )}
+                                {isImageFile(f.name) && (
+                                  <button
+                                    onClick={() => setPreviewIndex(allImages.findIndex((img) => img.name === f.name))}
+                                    title="Ver imagen"
+                                    className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                                  >
+                                    <ImageIcon className="w-3 h-3" />
+                                  </button>
+                                )}
+                                <a
+                                  href={fileUrl(f.path)}
+                                  download={f.name}
+                                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 min-w-0"
+                                >
+                                  <Download className="w-3 h-3 flex-shrink-0" />
+                                  <span className="truncate max-w-[180px]">{f.name}</span>
+                                  <span className="text-gray-400 flex-shrink-0">({formatBytes(f.size)})</span>
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  } else {
+                    // Archivo suelto en resultados/
+                    const f = item as ExecutionFile
+                    return (
+                      <div key={f.path} className="flex items-center gap-1">
+                        {isTextFile(f.name) && (
+                          <button
+                            onClick={() => setViewFile(f)}
+                            title="Ver contenido"
+                            className="text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </button>
+                        )}
+                        {isImageFile(f.name) && (
+                          <button
+                            onClick={() => setPreviewIndex(allImages.findIndex((img) => img.name === f.name))}
+                            title="Ver imagen"
+                            className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                          </button>
+                        )}
+                        <a
+                          href={fileUrl(f.path)}
+                          download={f.name}
+                          className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 min-w-0"
+                        >
+                          <Download className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate max-w-[180px]">{f.name}</span>
+                          <span className="text-gray-400 flex-shrink-0">({formatBytes(f.size)})</span>
+                        </a>
+                      </div>
+                    )
+                  }
+                })}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2">
+            <a
+              href={`${downloadZipUrl(execution.id)}?token=${token}`}
+              download={zipFilename}
+              className="inline-flex items-center gap-1 text-xs bg-gray-50 hover:bg-primary-50 border border-gray-200 hover:border-primary-200 text-gray-600 hover:text-primary-700 px-2 py-1 rounded-md transition-colors"
+              title={zipFilename}
+            >
+              <Archive className="w-3 h-3" />
+              Descargar ZIP
+            </a>
+            {files.drive_url && (
+              <a
+                href={files.drive_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs bg-success-50 hover:bg-success-100 border border-success-200 text-success-700 px-2 py-1 rounded-md transition-colors"
+                title="Abrir carpeta en Google Drive"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Abrir en Drive
+              </a>
+            )}
+          </div>
         </div>
       )}
       {viewFile && (

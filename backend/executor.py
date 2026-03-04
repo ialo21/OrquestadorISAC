@@ -185,20 +185,58 @@ async def run_execution(execution_id: str):
 # ── Helpers para listar archivos de una ejecución ────────────────────────────
 
 def list_execution_files(run_folder_rel: str) -> dict:
-    """Retorna listas de archivos en logs/ y resultados/."""
+    """Retorna listas de archivos en logs/ y resultados/ con estructura jerárquica."""
     base = Path(__file__).parent / run_folder_rel
-    result = {"logs": [], "resultados": []}
+    result = {"logs": [], "resultados": [], "drive_url": None}
 
-    for subfolder in ("logs", "resultados"):
-        folder = base / subfolder
-        if folder.exists():
-            for f in sorted(folder.iterdir()):
-                if f.is_file():
-                    result[subfolder].append({
-                        "name": f.name,
-                        "size": f.stat().st_size,
-                        "path": f"{subfolder}/{f.name}",
+    # Logs: plana como antes
+    logs_folder = base / "logs"
+    if logs_folder.exists():
+        for f in sorted(logs_folder.iterdir()):
+            if f.is_file():
+                result["logs"].append({
+                    "name": f.name,
+                    "size": f.stat().st_size,
+                    "path": f"logs/{f.name}",
+                })
+    
+    # Resultados: detectar subcarpetas (mongod-audit-log, mongod)
+    resultados_folder = base / "resultados"
+    if resultados_folder.exists():
+        for item in sorted(resultados_folder.iterdir()):
+            if item.is_dir():
+                # Subcarpeta (ej: mongod-audit-log, mongod)
+                folder_files = []
+                for f in sorted(item.iterdir()):
+                    if f.is_file():
+                        folder_files.append({
+                            "name": f.name,
+                            "size": f.stat().st_size,
+                            "path": f"resultados/{item.name}/{f.name}",
+                        })
+                result["resultados"].append({
+                    "name": item.name,
+                    "type": "folder",
+                    "files": folder_files,
+                })
+            elif item.is_file():
+                # Archivo suelto en resultados/ (omitir drive_url.txt)
+                if item.name != "drive_url.txt":
+                    result["resultados"].append({
+                        "name": item.name,
+                        "size": item.stat().st_size,
+                        "path": f"resultados/{item.name}",
+                        "type": "file",
                     })
+    
+    # Leer drive_url.txt si existe
+    drive_url_file = resultados_folder / "drive_url.txt"
+    if drive_url_file.exists() and drive_url_file.is_file():
+        try:
+            result["drive_url"] = drive_url_file.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+    
     return result
 
 

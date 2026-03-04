@@ -49,11 +49,21 @@ export interface ExecutionFile {
   name: string
   size: number
   path: string
+  type?: 'file'
 }
+
+export interface ExecutionFolder {
+  name: string
+  type: 'folder'
+  files: ExecutionFile[]
+}
+
+export type ExecutionResultItem = ExecutionFile | ExecutionFolder
 
 export interface ExecutionFiles {
   logs: ExecutionFile[]
-  resultados: ExecutionFile[]
+  resultados: ExecutionResultItem[]
+  drive_url?: string | null
 }
 
 export interface Stats {
