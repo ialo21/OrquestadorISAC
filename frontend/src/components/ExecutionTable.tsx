@@ -418,13 +418,11 @@ function FilesRow({ execution }: { execution: BotExecution }) {
   )
 }
 
-/** Contador en vivo para ejecuciones activas (running o queued). */
+/** Contador en vivo para ejecuciones activas (solo running). */
 function LiveDuration({ execution }: { execution: BotExecution }) {
-  const isActive = execution.status === 'running' || execution.status === 'queued'
-  // Preferir started_at cuando ya está corriendo para no incluir el tiempo en cola
-  const timerFrom = execution.status === 'running'
-    ? (execution.started_at ?? execution.queued_at)
-    : execution.queued_at
+  const isActive = execution.status === 'running'
+  // Solo contar tiempo cuando está ejecutando (started_at), no cuando está en cola
+  const timerFrom = execution.started_at
   const elapsed = useLiveTimer(timerFrom, isActive)
 
   if (!isActive) return <span className="text-gray-500">{formatDuration(execution.duration_seconds)}</span>

@@ -103,8 +103,12 @@ export default function ScheduleSection({ botId, onOpenCreate }: Props) {
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta programación?')) return
-    await deleteSchedule(id)
-    await load()
+    try {
+      await deleteSchedule(id)
+      await load()
+    } catch (e: unknown) {
+      alert(`Error al eliminar: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const handleToggle = async (s: BotSchedule) => {
