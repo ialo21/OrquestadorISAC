@@ -79,6 +79,8 @@ def _init_default_bots():
             script_path=r"c:\apps\RPA_MONI_OBJETOS\main.py",
             page_slug="rpa-moni-objetos",
             icon="Monitor",
+            supports_data_input=True,
+            supports_scheduling=False,
         ),
     ]
     _save(BOTS_FILE, [b.model_dump() for b in defaults])
