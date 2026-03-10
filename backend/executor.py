@@ -227,6 +227,8 @@ def list_execution_files(run_folder_rel: str) -> dict:
                         })
                     elif subitem.is_file():
                         # Archivo directo en subcarpeta nivel 1
+                        if subitem.name == "drive_url.txt":
+                            continue
                         folder_files.append({
                             "name": subitem.name,
                             "size": subitem.stat().st_size,
