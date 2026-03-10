@@ -189,9 +189,16 @@ function FilesRow({ execution }: { execution: BotExecution }) {
   const allImages = files
     ? [
         ...files.logs,
-        ...files.resultados.flatMap((item) =>
-          item.type === 'folder' ? item.files : [item]
-        )
+        ...files.resultados.flatMap((item) => {
+          if (item.type === 'folder') {
+            // Incluir archivos directos y archivos de subcarpetas
+            return [
+              ...item.files,
+              ...(item.subfolders?.flatMap(sf => sf.files) ?? [])
+            ]
+          }
+          return [item]
+        })
       ]
         .filter((f) => isImageFile(f.name))
         .map((f) => ({ src: fileUrl(f.path), name: f.name }))
@@ -288,6 +295,7 @@ function FilesRow({ execution }: { execution: BotExecution }) {
                 {files.resultados.map((item) => {
                   if (item.type === 'folder') {
                     const isExpanded = expandedFolders.has(item.name)
+                    const totalFiles = item.files.length + (item.subfolders?.reduce((sum, sf) => sum + sf.files.length, 0) ?? 0)
                     return (
                       <div key={item.name} className="ml-1">
                         <button
@@ -296,10 +304,11 @@ function FilesRow({ execution }: { execution: BotExecution }) {
                         >
                           {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                           <span>{item.name}</span>
-                          <span className="text-gray-400">({item.files.length})</span>
+                          <span className="text-gray-400">({totalFiles})</span>
                         </button>
                         {isExpanded && (
                           <div className="ml-4 space-y-1">
+                            {/* Archivos directos en la carpeta nivel 1 */}
                             {item.files.map((f) => (
                               <div key={f.path} className="flex items-center gap-1">
                                 {isTextFile(f.name) && (
@@ -331,6 +340,58 @@ function FilesRow({ execution }: { execution: BotExecution }) {
                                 </a>
                               </div>
                             ))}
+                            {/* Subcarpetas nivel 2 (rutas) */}
+                            {item.subfolders?.map((subfolder) => {
+                              const subKey = `${item.name}/${subfolder.name}`
+                              const isSubExpanded = expandedFolders.has(subKey)
+                              return (
+                                <div key={subKey}>
+                                  <button
+                                    onClick={() => toggleFolder(subKey)}
+                                    className="flex items-center gap-1 text-xs text-gray-600 hover:text-primary-700 font-medium mb-0.5"
+                                  >
+                                    {isSubExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                    <span>{subfolder.name}</span>
+                                    <span className="text-gray-400">({subfolder.files.length})</span>
+                                  </button>
+                                  {isSubExpanded && (
+                                    <div className="ml-4 space-y-1">
+                                      {subfolder.files.map((f) => (
+                                        <div key={f.path} className="flex items-center gap-1">
+                                          {isTextFile(f.name) && (
+                                            <button
+                                              onClick={() => setViewFile(f)}
+                                              title="Ver contenido"
+                                              className="text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0"
+                                            >
+                                              <Eye className="w-3 h-3" />
+                                            </button>
+                                          )}
+                                          {isImageFile(f.name) && (
+                                            <button
+                                              onClick={() => setPreviewIndex(allImages.findIndex((img) => img.name === f.name))}
+                                              title="Ver imagen"
+                                              className="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                                            >
+                                              <ImageIcon className="w-3 h-3" />
+                                            </button>
+                                          )}
+                                          <a
+                                            href={fileUrl(f.path)}
+                                            download={f.name}
+                                            className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary-700 min-w-0"
+                                          >
+                                            <Download className="w-3 h-3 flex-shrink-0" />
+                                            <span className="truncate max-w-[180px]">{f.name}</span>
+                                            <span className="text-gray-400 flex-shrink-0">({formatBytes(f.size)})</span>
+                                          </a>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </div>

@@ -56,6 +56,7 @@ export interface ExecutionFolder {
   name: string
   type: 'folder'
   files: ExecutionFile[]
+  subfolders?: ExecutionFolder[]
 }
 
 export type ExecutionResultItem = ExecutionFile | ExecutionFolder

@@ -200,24 +200,44 @@ def list_execution_files(run_folder_rel: str) -> dict:
                     "path": f"logs/{f.name}",
                 })
     
-    # Resultados: detectar subcarpetas (mongod-audit-log, mongod)
+    # Resultados: detectar subcarpetas con soporte para estructura anidada (servidor/ruta)
     resultados_folder = base / "resultados"
     if resultados_folder.exists():
         for item in sorted(resultados_folder.iterdir()):
             if item.is_dir():
-                # Subcarpeta (ej: mongod-audit-log, mongod)
+                # Subcarpeta nivel 1 (ej: Anubis, mongod-audit-log)
                 folder_files = []
-                for f in sorted(item.iterdir()):
-                    if f.is_file():
-                        folder_files.append({
-                            "name": f.name,
-                            "size": f.stat().st_size,
-                            "path": f"resultados/{item.name}/{f.name}",
+                subfolders = []
+                
+                for subitem in sorted(item.iterdir()):
+                    if subitem.is_dir():
+                        # Subcarpeta nivel 2 (ej: ruta_01, ruta_02)
+                        route_files = []
+                        for f in sorted(subitem.iterdir()):
+                            if f.is_file():
+                                route_files.append({
+                                    "name": f.name,
+                                    "size": f.stat().st_size,
+                                    "path": f"resultados/{item.name}/{subitem.name}/{f.name}",
+                                })
+                        subfolders.append({
+                            "name": subitem.name,
+                            "type": "folder",
+                            "files": route_files,
                         })
+                    elif subitem.is_file():
+                        # Archivo directo en subcarpeta nivel 1
+                        folder_files.append({
+                            "name": subitem.name,
+                            "size": subitem.stat().st_size,
+                            "path": f"resultados/{item.name}/{subitem.name}",
+                        })
+                
                 result["resultados"].append({
                     "name": item.name,
                     "type": "folder",
                     "files": folder_files,
+                    "subfolders": subfolders,
                 })
             elif item.is_file():
                 # Archivo suelto en resultados/ (omitir drive_url.txt)
@@ -229,13 +249,25 @@ def list_execution_files(run_folder_rel: str) -> dict:
                         "type": "file",
                     })
     
-    # Leer drive_url.txt si existe
+    # Leer drive_url.txt: buscar en resultados/ o en subcarpetas de servidor
     drive_url_file = resultados_folder / "drive_url.txt"
     if drive_url_file.exists() and drive_url_file.is_file():
         try:
             result["drive_url"] = drive_url_file.read_text(encoding="utf-8").strip()
         except Exception:
             pass
+    else:
+        # Buscar drive_url.txt en subcarpetas de servidor (ej: resultados/Anubis/drive_url.txt)
+        if resultados_folder.exists():
+            for item in resultados_folder.iterdir():
+                if item.is_dir():
+                    server_drive_url = item / "drive_url.txt"
+                    if server_drive_url.exists() and server_drive_url.is_file():
+                        try:
+                            result["drive_url"] = server_drive_url.read_text(encoding="utf-8").strip()
+                            break
+                        except Exception:
+                            pass
     
     return result
 
