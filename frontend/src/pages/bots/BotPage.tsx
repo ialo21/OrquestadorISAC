@@ -273,6 +273,7 @@ export default function BotPage({ botId, children, getInputData }: Props) {
           <ExecutionTable
             executions={executions}
             onCancelSuccess={loadExecutions}
+            onDeleteSuccess={loadExecutions}
           />
         </div>
       </div>

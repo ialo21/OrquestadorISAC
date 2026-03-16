@@ -383,6 +383,38 @@ def cancel_execution(execution_id: str, current_user: dict = Depends(auth.get_cu
     return {"ok": True, "killed": killed}
 
 
+@app.delete("/api/executions/{execution_id}")
+def delete_execution(execution_id: str, current_user: dict = Depends(auth.get_current_user)):
+    """Elimina una ejecución: archivos + entrada JSON. Solo admins o superadmins."""
+    if current_user["role"] not in ("superadmin", "admin"):
+        raise HTTPException(403, "Solo administradores pueden eliminar ejecuciones")
+    
+    executions = _load(EXECUTIONS_FILE)
+    ex = next((e for e in executions if e["id"] == execution_id), None)
+    if not ex:
+        raise HTTPException(404, "Ejecución no encontrada")
+    
+    # No permitir eliminar ejecuciones en curso
+    if ex["status"] in ("queued", "running"):
+        raise HTTPException(400, "No se puede eliminar una ejecución en curso. Cancélala primero.")
+    
+    # Eliminar archivos de la ejecución
+    if ex.get("run_folder"):
+        run_folder = Path(__file__).parent / ex["run_folder"]
+        if run_folder.exists():
+            import shutil
+            try:
+                shutil.rmtree(run_folder)
+            except Exception as e:
+                raise HTTPException(500, f"Error eliminando archivos: {e}")
+    
+    # Eliminar entrada del JSON
+    executions = [e for e in executions if e["id"] != execution_id]
+    _save(EXECUTIONS_FILE, executions)
+    
+    return {"ok": True, "message": "Ejecución eliminada correctamente"}
+
+
 @app.get("/api/executions/{execution_id}/files")
 def list_execution_files(execution_id: str, current_user: dict = Depends(auth.get_current_user)):
     ex = next((e for e in _load(EXECUTIONS_FILE) if e["id"] == execution_id), None)

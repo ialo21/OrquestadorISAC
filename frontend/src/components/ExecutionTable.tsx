@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X, ChevronLeft, ChevronRight as ChevronRightIcon, ExternalLink } from 'lucide-react'
+import { Download, FileText, Archive, ChevronDown, ChevronRight, XCircle, Loader2, Eye, Timer, Image as ImageIcon, X, ChevronLeft, ChevronRight as ChevronRightIcon, ExternalLink, Trash2 } from 'lucide-react'
 import type { BotExecution, ExecutionFile, ExecutionFiles, ExecutionResultItem } from '@/types'
 import { cn, formatDate, formatDuration, formatBytes, formatElapsed } from '@/lib/utils'
-import { fetchExecutionFiles, downloadZipUrl, cancelExecution } from '@/services/api'
+import { fetchExecutionFiles, downloadZipUrl, cancelExecution, deleteExecution } from '@/services/api'
 import LogViewerModal from '@/components/LogViewerModal'
 import { useLiveTimer } from '@/hooks/useLiveTimer'
 
@@ -19,6 +19,7 @@ interface Props {
   executions: BotExecution[]
   showBotName?: boolean
   onCancelSuccess?: () => void
+  onDeleteSuccess?: () => void
 }
 
 interface ImagePreviewModalProps {
@@ -504,10 +505,12 @@ interface RowProps {
   expanded: boolean
   onToggle: () => void
   onCancel: (id: string) => void
+  onDelete: (id: string) => void
   cancelling: string | null
+  deleting: string | null
 }
 
-function ExecutionRow({ ex, showBotName, expanded, onToggle, onCancel, cancelling }: RowProps) {
+function ExecutionRow({ ex, showBotName, expanded, onToggle, onCancel, onDelete, cancelling, deleting }: RowProps) {
   const status = STATUS_CONFIG[ex.status] ?? STATUS_CONFIG.queued
   const colSpan = showBotName ? 8 : 7
 
@@ -534,18 +537,32 @@ function ExecutionRow({ ex, showBotName, expanded, onToggle, onCancel, cancellin
           {ex.run_folder ? <FilesRow execution={ex} /> : <span className="text-gray-300 text-xs">—</span>}
         </td>
         <td className="py-3">
-          {(ex.status === 'queued' || ex.status === 'running') && (
-            <button
-              onClick={() => onCancel(ex.id)}
-              disabled={cancelling === ex.id}
-              className="text-danger-500 hover:text-danger-700 disabled:opacity-40"
-              title="Cancelar"
-            >
-              {cancelling === ex.id
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <XCircle className="w-4 h-4" />}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {(ex.status === 'queued' || ex.status === 'running') && (
+              <button
+                onClick={() => onCancel(ex.id)}
+                disabled={cancelling === ex.id}
+                className="text-danger-500 hover:text-danger-700 disabled:opacity-40"
+                title="Cancelar"
+              >
+                {cancelling === ex.id
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <XCircle className="w-4 h-4" />}
+              </button>
+            )}
+            {['completed', 'failed', 'cancelled', 'interrupted'].includes(ex.status) && (
+              <button
+                onClick={() => onDelete(ex.id)}
+                disabled={deleting === ex.id}
+                className="text-gray-400 hover:text-danger-600 disabled:opacity-40 transition-colors"
+                title="Eliminar ejecución"
+              >
+                {deleting === ex.id
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Trash2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
         </td>
       </tr>
       {expanded && (
@@ -566,9 +583,10 @@ function ExecutionRow({ ex, showBotName, expanded, onToggle, onCancel, cancellin
   )
 }
 
-export default function ExecutionTable({ executions, showBotName = false, onCancelSuccess }: Props) {
+export default function ExecutionTable({ executions, showBotName = false, onCancelSuccess, onDeleteSuccess }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const handleCancel = async (id: string) => {
     setCancelling(id)
@@ -577,6 +595,19 @@ export default function ExecutionTable({ executions, showBotName = false, onCanc
       onCancelSuccess?.()
     } finally {
       setCancelling(null)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar esta ejecución? Se eliminarán todos los archivos y registros.')) return
+    setDeleting(id)
+    try {
+      await deleteExecution(id)
+      onDeleteSuccess?.()
+    } catch (e) {
+      alert(`Error al eliminar: ${e}`)
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -613,7 +644,9 @@ export default function ExecutionTable({ executions, showBotName = false, onCanc
               expanded={expanded === ex.id}
               onToggle={() => setExpanded(expanded === ex.id ? null : ex.id)}
               onCancel={handleCancel}
+              onDelete={handleDelete}
               cancelling={cancelling}
+              deleting={deleting}
             />
           ))}
         </tbody>

@@ -64,6 +64,7 @@ export default function HistorialPage() {
               executions={finished}
               showBotName
               onCancelSuccess={load}
+              onDeleteSuccess={load}
             />
           </div>
         </div>

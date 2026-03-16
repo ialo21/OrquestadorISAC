@@ -56,6 +56,7 @@ export const fetchBotExecutions = (id: string) => get<BotExecution[]>(`/api/bots
 export const fetchExecutions = () => get<BotExecution[]>('/api/executions')
 export const fetchExecution = (id: string) => get<BotExecution>(`/api/executions/${id}`)
 export const cancelExecution = (id: string) => post<{ ok: boolean }>(`/api/executions/${id}/cancel`)
+export const deleteExecution = (id: string) => del<{ ok: boolean; message: string }>(`/api/executions/${id}`)
 export const fetchExecutionFiles = (id: string) => get<ExecutionFiles>(`/api/executions/${id}/files`)
 export const downloadFileUrl = (execId: string, filePath: string) =>
   `${BASE}/api/executions/${execId}/download/${filePath}?token=${localStorage.getItem('token')}`

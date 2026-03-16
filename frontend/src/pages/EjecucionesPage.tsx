@@ -65,6 +65,7 @@ export default function EjecucionesPage() {
               executions={active}
               showBotName
               onCancelSuccess={load}
+              onDeleteSuccess={load}
             />
           </div>
         </div>

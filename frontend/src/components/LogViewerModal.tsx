@@ -57,10 +57,17 @@ export default function LogViewerModal({ execId, file, onClose, executionStatus 
             hasReceivedContent = true
             setContent(prev => data.append ? prev + data.content : data.content)
             setLoading(false)
-            // Auto-scroll si está habilitado
+            // Auto-scroll si está habilitado Y el usuario está cerca del final
             if (autoScrollRef.current && preRef.current) {
               setTimeout(() => {
-                if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
+                if (preRef.current) {
+                  const { scrollTop, scrollHeight, clientHeight } = preRef.current
+                  const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+                  // Solo hacer scroll si ya estaba cerca del final
+                  if (isNearBottom || scrollTop === 0) {
+                    preRef.current.scrollTop = preRef.current.scrollHeight
+                  }
+                }
               }, 10)
             }
           }
