@@ -466,6 +466,7 @@ function FilesRow({ execution }: { execution: BotExecution }) {
           execId={execution.id}
           file={viewFile}
           onClose={() => setViewFile(null)}
+          executionStatus={execution.status}
         />
       )}
       {previewIndex !== null && allImages.length > 0 && (

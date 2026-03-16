@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X, Download, Loader2, FileText, Copy, Check } from 'lucide-react'
+import { X, Download, Loader2, FileText, Copy, Check, Radio } from 'lucide-react'
 import type { ExecutionFile } from '@/types'
 import { formatBytes } from '@/lib/utils'
 
@@ -9,21 +9,83 @@ interface Props {
   execId: string
   file: ExecutionFile
   onClose: () => void
+  executionStatus?: string
 }
 
-export default function LogViewerModal({ execId, file, onClose }: Props) {
+export default function LogViewerModal({ execId, file, onClose, executionStatus }: Props) {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [isLiveStreaming, setIsLiveStreaming] = useState(false)
   const preRef = useRef<HTMLPreElement>(null)
+  const autoScrollRef = useRef(true)
   const token = localStorage.getItem('token')
+
+  // Determinar si debemos usar streaming en vivo
+  const shouldStream = file.path === 'logs/run.log' && 
+                       executionStatus && 
+                       ['queued', 'running'].includes(executionStatus)
 
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
     setError('')
 
+    // Modo streaming para run.log activos
+    if (shouldStream) {
+      setIsLiveStreaming(true)
+      const eventSource = new EventSource(
+        `${BASE}/api/executions/${execId}/stream-log?token=${token}`
+      )
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.error) {
+            setError(`Error: ${data.error}`)
+            eventSource.close()
+            setIsLiveStreaming(false)
+            return
+          }
+
+          if (data.content) {
+            setContent(prev => data.append ? prev + data.content : data.content)
+            setLoading(false)
+            // Auto-scroll si está habilitado
+            if (autoScrollRef.current && preRef.current) {
+              setTimeout(() => {
+                if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
+              }, 10)
+            }
+          }
+
+          if (data.done) {
+            eventSource.close()
+            setIsLiveStreaming(false)
+          }
+        } catch (e) {
+          console.error('Error parsing SSE:', e)
+        }
+      }
+
+      eventSource.onerror = () => {
+        eventSource.close()
+        setIsLiveStreaming(false)
+        if (!content) {
+          setError('Error conectando al stream de logs')
+          setLoading(false)
+        }
+      }
+
+      return () => {
+        eventSource.close()
+        controller.abort()
+      }
+    }
+
+    // Modo estático para archivos completados o no-log
     fetch(
       `${BASE}/api/executions/${execId}/file-text?file_path=${encodeURIComponent(file.path)}&token=${token}`,
       { signal: controller.signal },
@@ -45,7 +107,7 @@ export default function LogViewerModal({ execId, file, onClose }: Props) {
       })
 
     return () => controller.abort()
-  }, [execId, file.path, token])
+  }, [execId, file.path, token, shouldStream, content])
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content)
@@ -75,10 +137,31 @@ export default function LogViewerModal({ execId, file, onClose }: Props) {
             <FileText className="w-4 h-4 text-gray-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 truncate">{file.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-gray-900 truncate">{file.name}</p>
+              {isLiveStreaming && (
+                <span className="flex items-center gap-1 text-xs text-success-600 bg-success-50 px-2 py-0.5 rounded-full">
+                  <Radio className="w-3 h-3 animate-pulse" />
+                  En vivo
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-400">{formatBytes(file.size)}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Auto-scroll toggle */}
+            {isLiveStreaming && (
+              <button
+                onClick={() => { autoScrollRef.current = !autoScrollRef.current }}
+                className={`text-xs px-3 py-1.5 rounded-lg transition-colors border ${
+                  autoScrollRef.current 
+                    ? 'bg-primary-50 text-primary-700 border-primary-200' 
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                Auto-scroll
+              </button>
+            )}
             {/* Copiar */}
             <button
               onClick={handleCopy}

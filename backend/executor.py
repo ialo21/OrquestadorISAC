@@ -68,6 +68,20 @@ def cancel_running_process(execution_id: str) -> bool:
     proc = _running_procs.get(execution_id)
     if not proc:
         return False
+    
+    # Escribir mensaje de cancelación en el log antes de terminar
+    execution = load_execution(execution_id)
+    if execution and execution.get("run_folder"):
+        log_file = Path(__file__).parent / execution["run_folder"] / "logs" / "run.log"
+        if log_file.exists():
+            try:
+                with open(log_file, "a", encoding="utf-8") as lf:
+                    lf.write(f"\n{'='*60}\n")
+                    lf.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ⚠ EJECUCIÓN CANCELADA POR USUARIO\n")
+                    lf.write(f"{'='*60}\n")
+            except Exception as e:
+                logger.warning("No se pudo escribir cancelación en log: %s", e)
+    
     try:
         proc.terminate()
         return True

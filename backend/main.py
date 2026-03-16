@@ -420,6 +420,69 @@ def execution_file_text(execution_id: str, file_path: str, current_user: dict = 
     return StreamingResponse(iter([content]), media_type="text/plain; charset=utf-8")
 
 
+@app.get("/api/executions/{execution_id}/stream-log")
+async def stream_log(execution_id: str, current_user: dict = Depends(auth.get_current_user)):
+    """SSE: stream del contenido de run.log en tiempo real."""
+    ex = next((e for e in _load(EXECUTIONS_FILE) if e["id"] == execution_id), None)
+    if not ex:
+        raise HTTPException(404, "Ejecución no encontrada")
+    
+    log_file = None
+    if ex.get("run_folder"):
+        log_file = Path(__file__).parent / ex["run_folder"] / "logs" / "run.log"
+    
+    async def generator():
+        last_size = 0
+        max_iterations = 600  # 10 minutos máximo (1 segundo por iteración)
+        iteration = 0
+        
+        while iteration < max_iterations:
+            # Verificar estado de la ejecución
+            current_ex = next((e for e in _load(EXECUTIONS_FILE) if e["id"] == execution_id), None)
+            if not current_ex:
+                yield {"data": json.dumps({"error": "not_found"})}
+                return
+            
+            # Si el archivo existe, leer contenido nuevo
+            if log_file and log_file.exists():
+                try:
+                    current_size = log_file.stat().st_size
+                    if current_size > last_size:
+                        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                            f.seek(last_size)
+                            new_content = f.read()
+                            if new_content:
+                                yield {"data": json.dumps({"content": new_content, "append": True})}
+                                last_size = current_size
+                except Exception as e:
+                    yield {"data": json.dumps({"error": f"read_error: {str(e)}"})}
+            
+            # Si la ejecución terminó, enviar señal final
+            if current_ex["status"] in ("completed", "failed", "cancelled", "interrupted"):
+                # Leer cualquier contenido final
+                if log_file and log_file.exists():
+                    try:
+                        current_size = log_file.stat().st_size
+                        if current_size > last_size:
+                            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                                f.seek(last_size)
+                                new_content = f.read()
+                                if new_content:
+                                    yield {"data": json.dumps({"content": new_content, "append": True})}
+                    except Exception:
+                        pass
+                
+                yield {"data": json.dumps({"done": True, "status": current_ex["status"]})}
+                return
+            
+            await asyncio.sleep(1)
+            iteration += 1
+        
+        yield {"data": json.dumps({"done": True, "timeout": True})}
+    
+    return EventSourceResponse(generator())
+
+
 @app.get("/api/executions/{execution_id}/download-zip")
 def download_execution_zip(execution_id: str, current_user: dict = Depends(auth.get_current_user)):
     ex = next((e for e in _load(EXECUTIONS_FILE) if e["id"] == execution_id), None)
