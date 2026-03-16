@@ -149,8 +149,9 @@ async def run_execution(execution_id: str):
     exit_code = -1
 
     try:
+        # -u para stdout/stderr sin buffer → los logs llegan en tiempo real
         proc = await asyncio.create_subprocess_exec(
-            "python", str(script_path.name), *script_args,
+            "python", "-u", str(script_path.name), *script_args,
             cwd=str(script_path.parent),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,

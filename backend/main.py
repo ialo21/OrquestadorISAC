@@ -436,6 +436,17 @@ async def stream_log(execution_id: str, current_user: dict = Depends(auth.get_cu
         max_iterations = 600  # 10 minutos máximo (1 segundo por iteración)
         iteration = 0
         
+        # Enviar contenido existente primero
+        if log_file and log_file.exists():
+            try:
+                with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                    existing_content = f.read()
+                    if existing_content:
+                        yield {"data": json.dumps({"content": existing_content, "append": False})}
+                        last_size = log_file.stat().st_size
+            except Exception as e:
+                yield {"data": json.dumps({"error": f"read_error: {str(e)}"})}
+        
         while iteration < max_iterations:
             # Verificar estado de la ejecución
             current_ex = next((e for e in _load(EXECUTIONS_FILE) if e["id"] == execution_id), None)

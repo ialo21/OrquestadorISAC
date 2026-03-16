@@ -39,6 +39,8 @@ export default function LogViewerModal({ execId, file, onClose, executionStatus 
         `${BASE}/api/executions/${execId}/stream-log?token=${token}`
       )
 
+      let hasReceivedContent = false
+
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
@@ -47,10 +49,12 @@ export default function LogViewerModal({ execId, file, onClose, executionStatus 
             setError(`Error: ${data.error}`)
             eventSource.close()
             setIsLiveStreaming(false)
+            setLoading(false)
             return
           }
 
           if (data.content) {
+            hasReceivedContent = true
             setContent(prev => data.append ? prev + data.content : data.content)
             setLoading(false)
             // Auto-scroll si está habilitado
@@ -64,6 +68,9 @@ export default function LogViewerModal({ execId, file, onClose, executionStatus 
           if (data.done) {
             eventSource.close()
             setIsLiveStreaming(false)
+            if (!hasReceivedContent) {
+              setLoading(false)
+            }
           }
         } catch (e) {
           console.error('Error parsing SSE:', e)
@@ -197,7 +204,9 @@ export default function LogViewerModal({ execId, file, onClose, executionStatus 
             <div className="absolute inset-0 flex items-center justify-center bg-white">
               <div className="flex flex-col items-center gap-3 text-gray-400">
                 <Loader2 className="w-6 h-6 animate-spin" />
-                <p className="text-sm">Cargando archivo…</p>
+                <p className="text-sm">
+                  {isLiveStreaming ? 'Esperando logs del bot...' : 'Cargando archivo…'}
+                </p>
               </div>
             </div>
           )}
@@ -211,7 +220,11 @@ export default function LogViewerModal({ execId, file, onClose, executionStatus 
               ref={preRef}
               className="h-full max-h-[70vh] overflow-auto p-5 text-[12px] leading-relaxed font-mono text-gray-100 bg-gray-950 text-green-300 whitespace-pre-wrap break-words"
             >
-              {content || <span className="text-gray-500 italic">Archivo vacío</span>}
+              {content || (
+                <span className="text-gray-500 italic">
+                  {isLiveStreaming ? 'Esperando que el bot genere logs...' : 'Archivo vacío'}
+                </span>
+              )}
             </pre>
           )}
         </div>
