@@ -651,6 +651,13 @@ def queue_status(current_user: dict = Depends(auth.get_current_user)):
 #  SCHEDULES
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _user_can_manage_bot(current_user: dict, bot_id: str) -> bool:
+    """Verifica si el usuario puede gestionar un bot (admin/superadmin o tiene acceso al bot)."""
+    if current_user["role"] in ("superadmin", "admin"):
+        return True
+    return bot_id in current_user.get("allowed_bot_ids", [])
+
+
 @app.get("/api/bots/{bot_id}/schedules")
 def list_schedules(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
     return [s for s in _load(SCHEDULES_FILE) if s["bot_id"] == bot_id]
@@ -662,8 +669,8 @@ def create_schedule(
     body: ScheduleCreate,
     current_user: dict = Depends(auth.get_current_user),
 ):
-    if current_user["role"] not in ("superadmin", "admin"):
-        raise HTTPException(403, "Solo admins pueden crear programaciones")
+    if not _user_can_manage_bot(current_user, bot_id):
+        raise HTTPException(403, "No tienes permiso para crear programaciones en este bot")
 
     bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
     if not bot:
@@ -689,13 +696,14 @@ def update_schedule(
     body: ScheduleUpdate,
     current_user: dict = Depends(auth.get_current_user),
 ):
-    if current_user["role"] not in ("superadmin", "admin"):
-        raise HTTPException(403, "Solo admins pueden editar programaciones")
-
     schedules = _load(SCHEDULES_FILE)
     sched = next((s for s in schedules if s["id"] == schedule_id), None)
     if not sched:
         raise HTTPException(404, "Programación no encontrada")
+    
+    if not _user_can_manage_bot(current_user, sched["bot_id"]):
+        raise HTTPException(403, "No tienes permiso para editar programaciones de este bot")
+    
     for k, v in body.model_dump(exclude_none=True).items():
         sched[k] = v
     _save(SCHEDULES_FILE, schedules)
@@ -704,10 +712,14 @@ def update_schedule(
 
 @app.delete("/api/schedules/{schedule_id}")
 def delete_schedule(schedule_id: str, current_user: dict = Depends(auth.get_current_user)):
-    if current_user["role"] not in ("superadmin", "admin"):
-        raise HTTPException(403, "Solo admins pueden eliminar programaciones")
-
     schedules = _load(SCHEDULES_FILE)
+    sched = next((s for s in schedules if s["id"] == schedule_id), None)
+    if not sched:
+        raise HTTPException(404, "Programación no encontrada")
+    
+    if not _user_can_manage_bot(current_user, sched["bot_id"]):
+        raise HTTPException(403, "No tienes permiso para eliminar programaciones de este bot")
+    
     schedules = [s for s in schedules if s["id"] != schedule_id]
     _save(SCHEDULES_FILE, schedules)
     return {"ok": True}
