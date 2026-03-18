@@ -4,6 +4,7 @@ FastAPI application for managing and orchestrating RPA/automation bots.
 """
 
 import asyncio
+import csv
 import io
 import json
 import logging
@@ -325,6 +326,67 @@ async def execute_bot(
 @app.get("/api/bots/{bot_id}/executions")
 def bot_executions(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
     return [e for e in _load(EXECUTIONS_FILE) if e["bot_id"] == bot_id]
+
+
+@app.get("/api/bots/{bot_id}/servers")
+def get_bot_servers(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
+    """Retorna la lista de servidores del CSV Consolidado del bot."""
+    bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
+    if not bot:
+        raise HTTPException(404, "Bot no encontrado")
+
+    bot_dir = Path(bot["script_path"]).parent
+    csv_files = sorted(bot_dir.glob("Consolidado*.csv"))
+    if not csv_files:
+        return []
+
+    servers: dict = {}
+    try:
+        with open(csv_files[0], "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                tipo = row.get("Tipo", "").strip().lower() or "windows"
+                name = row.get("Servidor", "").strip()
+                host = row.get("Host", "").strip()
+                port_str = row.get("Puerto", "").strip()
+                path = row.get("Ruta", "").strip()
+
+                if not name or not path:
+                    continue
+
+                if name not in servers:
+                    servers[name] = {
+                        "id": name,
+                        "name": name,
+                        "tipo": tipo,
+                        "host": host,
+                        "port": int(port_str) if port_str else 22,
+                        "rutas": [],
+                    }
+
+                if path not in servers[name]["rutas"]:
+                    servers[name]["rutas"].append(path)
+
+    except Exception as e:
+        raise HTTPException(500, f"Error leyendo CSV de servidores: {e}")
+
+    result = []
+    for info in servers.values():
+        rutas = info["rutas"]
+        if len(rutas) == 1:
+            desc = rutas[0]
+        else:
+            desc = f"{rutas[0]}  (+{len(rutas) - 1} más)"
+        result.append({
+            "id": info["id"],
+            "name": info["name"],
+            "tipo": info["tipo"],
+            "host": info["host"],
+            "rutas_count": len(rutas),
+            "descripcion": desc,
+        })
+
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════

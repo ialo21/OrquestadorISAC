@@ -1,4 +1,4 @@
-import type { Bot, BotCreate, BotExecution, BotSchedule, ExecutionFiles, Stats, User, UserRole } from '@/types'
+import type { Bot, BotCreate, BotExecution, BotSchedule, BotServer, ExecutionFiles, Stats, User, UserRole } from '@/types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8002'
 
@@ -51,6 +51,7 @@ export const fetchBot = (id: string) => get<Bot>(`/api/bots/${id}`)
 export const executeBot = (id: string, inputData?: Record<string, string>) =>
   post<BotExecution>(`/api/bots/${id}/execute`, { input_data: inputData ?? {} })
 export const fetchBotExecutions = (id: string) => get<BotExecution[]>(`/api/bots/${id}/executions`)
+export const fetchBotServers = (id: string) => get<BotServer[]>(`/api/bots/${id}/servers`)
 
 // ── Ejecuciones ───────────────────────────────────────────────────────────────
 export const fetchExecutions = () => get<BotExecution[]>('/api/executions')

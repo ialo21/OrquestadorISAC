@@ -67,6 +67,15 @@ export interface ExecutionFiles {
   drive_url?: string | null
 }
 
+export interface BotServer {
+  id: string
+  name: string
+  tipo: 'windows' | 'linux'
+  host: string
+  rutas_count: number
+  descripcion: string
+}
+
 export interface Stats {
   total_executions: number
   executions_today: number
