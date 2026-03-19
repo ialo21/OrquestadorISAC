@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from sse_starlette.sse import EventSourceResponse
@@ -171,16 +171,25 @@ async def _check_schedules(logger):
             continue
 
         logger.info("Scheduler: ejecutando bot %s por schedule %s", bot_id, sched["id"])
+        sched_input = sched.get("input_data", {})
+        safe_sched_input = {k: v for k, v in sched_input.items()
+                           if k.upper() not in executor.SENSITIVE_ENV_KEYS}
+
         execution = BotExecution(
             bot_id=bot_id,
             bot_name=bot["name"],
             triggered_by="scheduler",
             triggered_by_name="Programación automática",
-            input_data=sched.get("input_data", {}),
+            input_data=safe_sched_input,
         )
         executions = _load(EXECUTIONS_FILE)
         executions.insert(0, execution.model_dump())
         _save(EXECUTIONS_FILE, executions)
+
+        for key in executor.SENSITIVE_ENV_KEYS:
+            val = sched_input.get(key.lower(), "") or sched_input.get(key, "")
+            if val:
+                executor.store_execution_secret(execution.id, key, val)
 
         await queue_manager.enqueue(execution.id, bot.get("requires_ui", False))
 
@@ -308,16 +317,24 @@ async def execute_bot(
         if bot_id not in current_user.get("allowed_bot_ids", []):
             raise HTTPException(403, "Sin acceso a este bot")
 
+    safe_input = {k: v for k, v in body.input_data.items()
+                   if k.upper() not in executor.SENSITIVE_ENV_KEYS}
+
     execution = BotExecution(
         bot_id=bot_id,
         bot_name=bot["name"],
         triggered_by=current_user["email"],
         triggered_by_name=current_user["name"],
-        input_data=body.input_data,
+        input_data=safe_input,
     )
     executions = _load(EXECUTIONS_FILE)
     executions.insert(0, execution.model_dump())
     _save(EXECUTIONS_FILE, executions)
+
+    for key in executor.SENSITIVE_ENV_KEYS:
+        val = body.input_data.get(key.lower(), "") or body.input_data.get(key, "")
+        if val:
+            executor.store_execution_secret(execution.id, key, val)
 
     await queue_manager.enqueue(execution.id, bot.get("requires_ui", False))
     return execution.model_dump()
@@ -387,6 +404,53 @@ def get_bot_servers(bot_id: str, current_user: dict = Depends(auth.get_current_u
         })
 
     return result
+
+
+# ── Linux Keys ────────────────────────────────────────────────────────────────
+
+@app.get("/api/bots/{bot_id}/linux-keys")
+def list_linux_keys(bot_id: str, current_user: dict = Depends(auth.get_current_user)):
+    """Lista los archivos .ppk en la carpeta llaves/ del bot."""
+    bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
+    if not bot:
+        raise HTTPException(404, "Bot no encontrado")
+
+    keys_dir = Path(bot["script_path"]).parent / "llaves"
+    if not keys_dir.exists():
+        return []
+
+    return [
+        {"name": f.name, "size": f.stat().st_size}
+        for f in sorted(keys_dir.glob("*.ppk"))
+    ]
+
+
+@app.post("/api/bots/{bot_id}/linux-keys")
+async def upload_linux_key(
+    bot_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(auth.get_current_user),
+):
+    """Sube un archivo .ppk a la carpeta llaves/ del bot."""
+    bot = next((b for b in _load(BOTS_FILE) if b["id"] == bot_id), None)
+    if not bot:
+        raise HTTPException(404, "Bot no encontrado")
+
+    if not file.filename or not file.filename.lower().endswith(".ppk"):
+        raise HTTPException(400, "Solo se permiten archivos .ppk")
+
+    safe_name = Path(file.filename).name
+    if "/" in safe_name or "\\" in safe_name or ".." in safe_name:
+        raise HTTPException(400, "Nombre de archivo inválido")
+
+    keys_dir = Path(bot["script_path"]).parent / "llaves"
+    keys_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = keys_dir / safe_name
+    content = await file.read()
+    dest.write_bytes(content)
+
+    return {"name": safe_name, "size": len(content)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

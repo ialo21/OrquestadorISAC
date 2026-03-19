@@ -76,6 +76,11 @@ export interface BotServer {
   descripcion: string
 }
 
+export interface LinuxKey {
+  name: string
+  size: number
+}
+
 export interface Stats {
   total_executions: number
   executions_today: number

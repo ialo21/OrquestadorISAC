@@ -22,6 +22,23 @@ EJECUCIONES_DIR = Path(__file__).parent / "ejecuciones"
 # Mapa de ejecuciones en curso → proceso asyncio.subprocess.Process
 _running_procs: dict[str, asyncio.subprocess.Process] = {}
 
+# Almacén in-memory de datos sensibles por ejecución (nunca se persisten a disco)
+_execution_secrets: dict[str, dict[str, str]] = {}
+
+SENSITIVE_ENV_KEYS = {"LINUX_KEY_PASS"}
+
+
+def store_execution_secret(execution_id: str, key: str, value: str):
+    """Guarda un dato sensible en memoria para una ejecución."""
+    if execution_id not in _execution_secrets:
+        _execution_secrets[execution_id] = {}
+    _execution_secrets[execution_id][key] = value
+
+
+def _pop_execution_secrets(execution_id: str) -> dict[str, str]:
+    """Extrae y elimina los secretos de una ejecución."""
+    return _execution_secrets.pop(execution_id, {})
+
 
 # ── Helpers de persistencia ──────────────────────────────────────────────────
 
@@ -143,6 +160,10 @@ async def run_execution(execution_id: str):
 
     input_data: dict = execution.get("input_data", {})
     for key, value in input_data.items():
+        env[f"BOT_INPUT_{key.upper()}"] = str(value)
+
+    secrets = _pop_execution_secrets(execution_id)
+    for key, value in secrets.items():
         env[f"BOT_INPUT_{key.upper()}"] = str(value)
 
     start_time = datetime.now()

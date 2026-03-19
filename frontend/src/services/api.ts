@@ -1,4 +1,4 @@
-import type { Bot, BotCreate, BotExecution, BotSchedule, BotServer, ExecutionFiles, Stats, User, UserRole } from '@/types'
+import type { Bot, BotCreate, BotExecution, BotSchedule, BotServer, ExecutionFiles, LinuxKey, Stats, User, UserRole } from '@/types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8002'
 
@@ -52,6 +52,18 @@ export const executeBot = (id: string, inputData?: Record<string, string>) =>
   post<BotExecution>(`/api/bots/${id}/execute`, { input_data: inputData ?? {} })
 export const fetchBotExecutions = (id: string) => get<BotExecution[]>(`/api/bots/${id}/executions`)
 export const fetchBotServers = (id: string) => get<BotServer[]>(`/api/bots/${id}/servers`)
+export const fetchLinuxKeys = (botId: string) => get<LinuxKey[]>(`/api/bots/${botId}/linux-keys`)
+export async function uploadLinuxKey(botId: string, file: File): Promise<LinuxKey> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE}/api/bots/${botId}/linux-keys`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: form,
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
 
 // ── Ejecuciones ───────────────────────────────────────────────────────────────
 export const fetchExecutions = () => get<BotExecution[]>('/api/executions')
