@@ -14,9 +14,10 @@ export default function RPAMoniObjetosPage() {
   const [selectedServers, setSelectedServers] = useState<Set<string>>(new Set())
   const [validationError, setValidationError] = useState('')
 
-  // SSH key state
+  // SSH credentials state
   const [linuxKeys, setLinuxKeys] = useState<LinuxKey[]>([])
   const [loadingKeys, setLoadingKeys] = useState(false)
+  const [sshUser, setSshUser] = useState('')
   const [selectedKey, setSelectedKey] = useState('')
   const [keyPassphrase, setKeyPassphrase] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
@@ -101,6 +102,10 @@ export default function RPAMoniObjetosPage() {
     )
 
     if (needsKey) {
+      if (!sshUser.trim()) {
+        setValidationError('Debes ingresar el usuario SSH para los servidores Linux.')
+        return null
+      }
       if (!selectedKey) {
         setValidationError('Debes seleccionar una llave SSH para los servidores Linux.')
         return null
@@ -109,12 +114,13 @@ export default function RPAMoniObjetosPage() {
         setValidationError('Debes ingresar la passphrase de la llave SSH.')
         return null
       }
+      data.linux_user = sshUser.trim()
       data.linux_key_name = selectedKey
       data.linux_key_pass = keyPassphrase
     }
 
     return data
-  }, [selectedServers, servers, selectedKey, keyPassphrase])
+  }, [selectedServers, servers, sshUser, selectedKey, keyPassphrase])
 
   const totalRutas = servers
     .filter((s) => selectedServers.has(s.id))
@@ -223,6 +229,20 @@ export default function RPAMoniObjetosPage() {
             <div className="flex items-center gap-2 text-sm font-medium text-violet-800">
               <KeyRound className="w-4 h-4" />
               <span>Configuración SSH</span>
+            </div>
+
+            {/* Usuario SSH */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Usuario SSH</label>
+              <input
+                type="text"
+                value={sshUser}
+                onChange={(e) => setSshUser(e.target.value)}
+                placeholder="ej: ilopchap"
+                autoComplete="off"
+                spellCheck={false}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 font-mono"
+              />
             </div>
 
             {/* Selector de llave */}
